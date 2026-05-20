@@ -1,3 +1,3 @@
-# Ingeniería de Agentes de IA
+![](./assets/banners/main-banner.png)
 
-![](../ai-agent-labs/assets/banners/main-banner.png)
+# Ingeniería de Agentes de IA
