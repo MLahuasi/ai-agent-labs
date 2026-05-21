@@ -80,6 +80,7 @@ Debe incluir como mínimo estas decisiones:
 - `current-state.md` debe enlazar obligatoriamente el último hilo generado
 - todo pendiente no resuelto debe registrarse en `current-state.md` y proponerse para continuidad en el siguiente hilo, salvo que el usuario indique que no es necesario
 - al solicitar `cerrar hilo`, el hilo siempre debe informar al usuario qué puntos no se resolvieron y consultar si desea que continúen en el siguiente hilo
+- los archivos ya generados en `doc/codex/threads/` nunca se deben editar después de cerrar el hilo; cualquier corrección o cambio posterior debe quedar registrado en un nuevo cierre o en `current-state.md`
 
 #### `current-state.md`
 
@@ -130,6 +131,7 @@ Fecha: [YYYYMMDDHHmm]
 - El usuario debe validar esa propuesta o darte feedback.
 - Solo después de esa validación puedes crear el archivo de cierre.
 - Nunca cierres un hilo sin autorización explícita del usuario.
+- Nunca edites un archivo de cierre ya creado en `doc/codex/threads/`.
 - Antes de crear el archivo debes solicitar obligatoriamente:
   - número del hilo
   - tema

@@ -53,6 +53,8 @@ Cuando se solicite `cerrar hilo`, el hilo debe generar un Markdown en `doc/codex
 
 Todo cierre documental debe usar como base `doc/codex/thread-close-template.md`.
 
+Los hilos cerrados son inmutables. Nunca se deben editar archivos ya generados en `doc/codex/threads/`, aunque contengan referencias historicas, decisiones antiguas o informacion que haya cambiado despues. Cualquier correccion, aclaracion o cambio de estado posterior debe registrarse en un nuevo cierre de hilo o en `doc/codex/current-state.md`, segun corresponda.
+
 Al solicitar `cerrar hilo`, el hilo siempre debe informar al usuario que puntos no se resolvieron y consultar si desea que continuen en el siguiente hilo.
 
 Despues de crear el cierre, el hilo debe actualizar `current-state.md` para:
