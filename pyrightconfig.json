@@ -1,0 +1,5 @@
+{
+  "include": ["labs"],
+  "venvPath": "./labs",
+  "venv": ".venv"
+}

@@ -4,6 +4,7 @@
 
 ## Fundamentos
 
+- [Configuración Ambiente Windows](./fundamentos/install-config-windows.md)
 - [Crea un flujo de trabajo agéntico](./fundamentos/README.md)
 - [Agentes y patrones agénticos](./fundamentos/README.md)
 - [Orquestando LLMs](./fundamentos/README.md)
