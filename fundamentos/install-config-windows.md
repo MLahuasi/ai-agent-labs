@@ -1,396 +1,647 @@
-# Configuración del entorno en Windows usando VSCode y UV
+# 🪟 Configuración del entorno en Windows con VS Code y uv
 
-> Guía adaptada para trabajar con **VSCode** como IDE principal.  
-> El curso usa **Cursor** como referencia, pero Cursor está basado en VSCode y el flujo puede realizarse correctamente desde VSCode.
+> Guía para preparar el ambiente de trabajo del repositorio `ai-agent-labs` en Windows.  
+> El curso puede usar Cursor como referencia, pero este flujo está pensado para **VS Code + Python + uv**.
 
-## 1. Requisitos previos
+## 🎯 Objetivo
 
-Antes de comenzar, asegúrate de tener instalado:
+Al finalizar esta guía deberías tener:
 
-- Git
-- VSCode
-- Python
-- UV
-- Extensiones de VSCode para Python y Jupyter
-- Microsoft Build Tools, si vas a trabajar con paquetes que requieren compilación nativa
+- Git instalado.
+- VS Code preparado para Python y notebooks.
+- `uv` instalado como gestor de entorno, paquetes y versiones de Python.
+- El proyecto abierto desde la raíz del repositorio.
+- El entorno virtual de laboratorios creado en `labs/.venv`.
+- VS Code y Pylance apuntando al intérprete correcto.
+- Variables de entorno configuradas en `labs/.env`.
+- Dependencias sincronizadas y verificadas.
 
-## 2. Instalar Git
+## 1. ✅ Requisitos previos
 
-- Descarga [Git para Windows](https://git-scm.com/download/win) desde:
-- Verifica la instalación:
+Instala o ten disponibles estas herramientas:
 
-```bash
+- Git.
+- VS Code.
+- Python `>=3.12`.
+- uv.
+- Extensiones de VS Code para Python y Jupyter.
+- Microsoft C++ Build Tools, solo si más adelante trabajas con paquetes que requieren compilación nativa.
+
+> La versión actualmente usada por los laboratorios es Python `3.12.11`, declarada en `labs/.python-version`.
+
+## 2. 🔧 Instalar Git
+
+Descarga Git para Windows desde:
+
+```txt
+https://git-scm.com/download/win
+```
+
+Verifica la instalación:
+
+```powershell
 git --version
 ```
 
-## 3. Seleccionar directorio del proyecto
+## 3. 🧩 Instalar VS Code y extensiones
 
-Puedes abrir con `Explorador`, `PowerShell` o `CMD`.
-
-- Si usas `PowerShell` o `CMD` ingresa al directorio y ejecuta desde la terminal (abrir el proyecto en VSCode):
-
-```bash
-code .
-```
-
-- `Explorador` (manualmente):
+Instala VS Code desde:
 
 ```txt
-VSCode → File → Open Folder → seleccionar carpeta agents
+https://code.visualstudio.com/
 ```
 
-## 4. Instalar extensiones necesarias en VSCode
+Luego instala estas extensiones oficiales de Microsoft:
 
-Instala estas extensiones:
+- Python.
+- Jupyter.
 
-- Python
-- Jupyter
-
-Desde VSCode:
+Desde VS Code:
 
 ```txt
 Extensions → Buscar "Python" → Instalar extensión oficial de Microsoft
 Extensions → Buscar "Jupyter" → Instalar extensión oficial de Microsoft
 ```
 
-**NOTA IMPORTANTE**:
+Verifica que el `Publisher` sea `Microsoft`.
 
-- Verificar que `Publisher`: `Microsoft`
+## 4. ⚡ Instalar uv
 
-## 5. Instalar UV
-
-Instala UV siguiendo la documentación oficial:
+Instala uv siguiendo la documentación oficial:
 
 ```txt
 https://docs.astral.sh/uv/getting-started/installation/
 ```
 
-En Windows, puedes usar PowerShell:
+En Windows puedes usar PowerShell:
 
 ```powershell
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-Cierra y vuelve a abrir la terminal.
+Cierra y vuelve a abrir la terminal. Después verifica:
 
-Verifica la instalación:
-
-```bash
+```powershell
 uv --version
 ```
 
-Actualiza UV:
+Actualiza uv si ya lo tenías instalado:
 
-```bash
+```powershell
 uv self update
 ```
 
-**NOTA IMPORTANTE**:
+uv se usa en este proyecto para:
 
-`UV` es una herramienta moderna para:
+- Gestionar entornos virtuales.
+- Instalar paquetes.
+- Sincronizar dependencias.
+- Ejecutar scripts Python.
+- Administrar versiones de Python cuando sea necesario.
 
-- gestionar entornos virtuales,
-- instalar paquetes,
-- manejar dependencias,
-- ejecutar proyectos,
-- administrar versiones de Python.
+## 5. 🧭 Abrir el proyecto
 
-## 6. Desactivar Conda si lo usas
+Abre una terminal en la carpeta donde quieras trabajar y entra al repositorio:
 
-Si tienes Anaconda o Miniconda instalado, desactiva el entorno activo:
+```powershell
+cd D:\Fuentes\Core\ai-agent-labs
+```
 
-```bash
+Abre el proyecto en VS Code desde la raíz:
+
+```powershell
+code .
+```
+
+También puedes abrirlo manualmente:
+
+```txt
+VS Code → File → Open Folder → seleccionar ai-agent-labs
+```
+
+> Abre siempre la raíz del repositorio, no solo `labs/`, porque la configuración del workspace vive en archivos de nivel raíz como `.vscode/settings.json` y `pyrightconfig.json`.
+
+## 6. 🧹 Desactivar Conda si aplica
+
+Si usas Anaconda o Miniconda y tienes un entorno activo, desactívalo:
+
+```powershell
 conda deactivate
 ```
 
 Opcionalmente, evita que Conda active automáticamente el entorno base:
 
-```bash
+```powershell
 conda config --set auto_activate_base false
 ```
 
-## 7. Instalar dependencias del proyecto con UV
+## 7. 🐍 Preparar el entorno de laboratorios
 
-Desde la raíz del proyecto:
-
-```bash
-uv sync
-```
-
-Si aparece un error relacionado con certificados, prueba:
-
-```bash
-uv --native-tls sync
-```
-
-Si el problema continúa:
-
-```bash
-uv --allow-insecure-host github.com sync
-```
-
-**NOTA IMPORTANTE**
-
-`uv sync` debe ejecutarse desde la raíz de un proyecto Python que contenga un archivo:
+El proyecto Python ejecutable vive dentro de:
 
 ```txt
-pyproject.toml
+labs/
 ```
 
-Por ejemplo:
+Si estás configurando el repositorio desde cero y `labs/` todavía no existe, créalo primero:
 
-```bash
+```powershell
 cd D:\Fuentes\Core\ai-agent-labs
+New-Item -ItemType Directory -Name "labs"
+cd labs
 ```
 
-## 8. Inicializar un proyecto UV (opcional)
+Después inicializa el proyecto Python con uv:
 
-Si el repositorio todavía no contiene un archivo:
-
-```txt
-pyproject.toml
-```
-
-significa que aún no ha sido inicializado como proyecto Python administrado por UV.
-
-En ese caso, puedes inicializarlo manualmente.
-
-### Paso 1 — Abrir terminal en la raíz del proyecto
-
-Ejemplo:
-
-```bash
-cd D:\Fuentes\Core\ai-agent-labs
-```
-
-### Paso 2 — Inicializar UV
-
-```bash
+```powershell
 uv init
 ```
 
-Esto creará archivos como:
+Este comando crea los archivos base del proyecto, como:
 
 ```txt
-pyproject.toml
-.python-version
-README.md
+labs/pyproject.toml
+labs/.python-version
+labs/README.md
 ```
 
-### Paso 3 — Crear entorno virtual
+Asegura que uv tenga disponible la versión de Python requerida:
 
-```bash
-uv venv
+```powershell
+uv python install 3.12.11
 ```
 
-### Paso 4 — Instalar dependencias iniciales
+Configura esa versión para el proyecto:
 
-Ejemplo:
-
-```bash
-uv add openai
-uv add jupyter
-uv add ipykernel
+```powershell
+uv python pin 3.12.11
 ```
 
-### Resultado esperado
+Instala las dependencias necesarias para los laboratorios actuales:
 
-La estructura del proyecto será similar a:
+```powershell
+uv add google-genai python-dotenv
+```
+
+Al instalar dependencias, uv actualiza:
 
 ```txt
-ai-agent-labs
-├── .venv
-├── pyproject.toml
-├── uv.lock
-├── README.md
+labs/pyproject.toml
+labs/uv.lock
 ```
 
-> NOTA: este paso es necesario únicamente cuando el repositorio aún no contiene configuración Python basada en UV.
-
-## 9. Instalar CrewAI como herramienta global de UV
-
-Este paso será útil para los módulos relacionados con CrewAI.
-
-```bash
-uv tool install crewai
-uv tool upgrade crewai
-```
-
-## 10. Crear archivo `.env`
-
-En la raíz del proyecto, crea un archivo llamado exactamente:
+Y crea o actualiza el entorno virtual:
 
 ```txt
-.env
+labs/.venv/
 ```
 
-No debe llamarse:
+En Windows, el intérprete esperado es:
 
 ```txt
-env
-env.txt
-.env.txt
+D:\Fuentes\Core\ai-agent-labs\labs\.venv\Scripts\python.exe
 ```
 
-Debe llamarse únicamente:
+Si `labs/` ya existe y contiene `pyproject.toml`, no necesitas ejecutar `uv init` otra vez. En ese caso, solo sincroniza dependencias desde `labs/`.
+
+`uv sync` lee `pyproject.toml` y `uv.lock`, crea el entorno virtual si todavía no existe y deja `labs/.venv` con las dependencias exactas del proyecto. Úsalo después de clonar el repositorio, cambiar de rama, modificar dependencias o cuando quieras asegurar que el entorno local coincide con la configuración declarada.
+
+```powershell
+cd D:\Fuentes\Core\ai-agent-labs\labs
+uv sync
+```
+
+Si aparece un problema de certificados, prueba:
+
+```powershell
+uv --native-tls sync
+```
+
+Si el problema continúa y sabes por qué necesitas permitir el host:
+
+```powershell
+uv --allow-insecure-host github.com sync
+```
+
+## 8. 🔐 Crear el archivo de variables de entorno
+
+Para los laboratorios, el archivo de variables debe vivir en:
 
 ```txt
-.env
+labs/.env
 ```
 
-Puedes crearlo desde la terminal:
+Puedes crearlo desde PowerShell:
 
-```bash
-type nul > .env
+```powershell
+cd D:\Fuentes\Core\ai-agent-labs\labs
+New-Item -ItemType File -Name ".env"
 ```
 
-O desde VSCode:
+O desde VS Code:
 
 ```txt
-File → New File → guardar como .env en la raíz del proyecto
+File → New File → guardar como labs/.env
 ```
 
-## 11. Configurar API keys
+## 9. 🔑 Configurar API keys
 
-Dentro del archivo `.env`, agrega tus claves:
+Dentro de `labs/.env`, agrega las claves que necesites para cada laboratorio:
 
 ```env
 OPENAI_API_KEY=tu_api_key_aqui
+GEMINI_API_KEY=tu_api_key_aqui
 GOOGLE_API_KEY=tu_api_key_aqui
 ANTHROPIC_API_KEY=tu_api_key_aqui
 DEEPSEEK_API_KEY=tu_api_key_aqui
 ```
 
-La clave más importante para iniciar normalmente será:
+Para los laboratorios de Gemini, la variable estándar del repositorio es:
 
 ```env
-OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxx
+GEMINI_API_KEY=tu_api_key_aqui
 ```
 
-> Importante: no subas el archivo `.env` a GitHub.
-
-Verifica que exista `.gitignore` y que incluya:
+No subas archivos `.env` a GitHub. Verifica que `.gitignore` incluya:
 
 ```gitignore
 .env
 .venv
+labs/.env
+labs/.venv
 ```
 
-## 12. Seleccionar el intérprete de Python en VSCode
+## 10. 🧠 Configurar VS Code
 
-Después de ejecutar `uv sync`, UV debería crear un entorno virtual `.venv`.
+El repositorio puede indicar a VS Code qué intérprete usar mediante [.vscode/settings.json](../.vscode/settings.json):
 
-En VSCode:
+Contenido recomendado:
+
+```json
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/labs/.venv/Scripts/python.exe",
+  "python.terminal.useEnvFile": true,
+  "python.envFile": "${workspaceFolder}/labs/.env"
+}
+```
+
+Qué hace cada propiedad:
+
+- `python.defaultInterpreterPath`: usa el Python del entorno virtual de `labs/`.
+- `python.terminal.useEnvFile`: permite cargar variables desde `.env` en terminales Python.
+- `python.envFile`: define `labs/.env` como archivo de entorno del workspace.
+
+También puedes seleccionar manualmente el intérprete:
 
 ```txt
 Ctrl + Shift + P
 Python: Select Interpreter
-Seleccionar .venv
+Seleccionar labs\.venv\Scripts\python.exe
 ```
 
-También puedes buscar una ruta similar a:
+Si VS Code mantiene advertencias antiguas, recarga la ventana:
 
 ```txt
-./.venv/Scripts/python.exe
+Ctrl + Shift + P
+Developer: Reload Window
 ```
 
-## 13. Abrir notebooks del curso
+## 11. 🔎 Configurar Pylance y Pyright
 
-Abre el primer laboratorio, por ejemplo:
+Pylance usa Pyright para analizar imports y tipos. Para que analice los laboratorios con el entorno correcto, el repositorio debe tener [pyrightconfig.json](../pyrightconfig.json):
+
+Contenido recomendado:
+
+```json
+{
+  "include": ["labs"],
+  "venvPath": "./labs",
+  "venv": ".venv"
+}
+```
+
+Qué hace cada propiedad:
+
+- `include`: limita el análisis principal a `labs/`.
+- `venvPath`: indica dónde buscar entornos virtuales.
+- `venv`: indica el nombre del entorno virtual.
+
+Esta configuración ayuda a evitar advertencias como:
 
 ```txt
-1_foundations/1_lab1.ipynb
+No se ha podido resolver la importación "dotenv". Pylance reportMissingImports
 ```
 
-En la parte superior derecha del notebook:
+## 12. ✅ Validar la instalación
+
+Verifica la versión de Python del entorno:
+
+```powershell
+cd D:\Fuentes\Core\ai-agent-labs\labs
+.\.venv\Scripts\python.exe --version
+```
+
+Salida esperada actualmente:
 
 ```txt
-Select Kernel → Python Environments → .venv
+Python 3.12.11
 ```
 
-Luego ejecuta una celda con:
+Verifica imports básicos de los laboratorios actuales:
+
+```powershell
+.\.venv\Scripts\python.exe -c "from dotenv import load_dotenv; from google import genai; print('imports ok')"
+```
+
+Salida esperada:
+
+```txt
+imports ok
+```
+
+También puedes validar con uv:
+
+```powershell
+uv run python -c "from dotenv import load_dotenv; from google import genai; print('imports ok')"
+```
+
+## 13. ▶️ Ejecutar laboratorios
+
+Ejecuta un archivo Python desde el directorio del laboratorio correspondiente.
+
+Ejemplo:
+
+```powershell
+cd D:\Fuentes\Core\ai-agent-labs\labs\01-gemini-api-config
+uv run python main.py
+```
+
+Si usas notebooks, selecciona el kernel del entorno:
+
+```txt
+Select Kernel → Python Environments → labs\.venv
+```
+
+Luego ejecuta celdas con:
 
 ```txt
 Shift + Enter
 ```
 
-## 14. Comandos útiles durante el curso
+## 14. 🛠️ Comandos frecuentes
 
-Ejecutar un archivo Python:
+Desde `labs/`:
 
-```bash
-uv run python main.py
+Sincronizar `.venv` con `pyproject.toml` y `uv.lock` (dependencias).
+
+```powershell
+uv sync
 ```
 
 Agregar una dependencia:
 
-```bash
+```powershell
 uv add nombre-paquete
+```
+
+Ejemplo:
+
+```powershell
+uv add google-genai python-dotenv
 ```
 
 Eliminar una dependencia:
 
-```bash
+```powershell
 uv remove nombre-paquete
-```
-
-Sincronizar dependencias:
-
-```bash
-uv sync
 ```
 
 Actualizar lockfile:
 
-```bash
+```powershell
 uv lock
 ```
 
 Ver paquetes instalados:
 
-```bash
+```powershell
 uv pip list
 ```
 
-## 15. Cursor vs VSCode
+Ejecutar Python dentro del entorno:
 
-El curso usa Cursor como IDE de referencia, pero no es obligatorio usarlo.
-
-Cursor es un editor basado en VSCode con funciones integradas de IA. Sin embargo, para seguir el curso puedes trabajar con:
-
-```txt
-VSCode + Python Extension + Jupyter Extension + UV
+```powershell
+uv run python main.py
 ```
 
-Esto es suficiente para ejecutar notebooks, gestionar entornos virtuales y trabajar con el código del curso.
+## 15. 🧪 Instalar CrewAI como herramienta global
 
-## 16. Recomendación personal de entorno
+Este paso es útil para módulos relacionados con CrewAI, pero no es necesario para preparar el primer laboratorio de Gemini.
 
-Para mantener un flujo estable y profesional:
-
-```txt
-IDE principal: VSCode
-Gestor de entorno y paquetes: UV
-Terminal: PowerShell o terminal integrada de VSCode
-Notebooks: Jupyter extension
-Control de versiones: Git
+```powershell
+uv tool install crewai
+uv tool upgrade crewai
 ```
 
-Cursor puede instalarse opcionalmente para comparar su experiencia con IA, pero no es necesario reemplazar VSCode.
+## 16. 🧭 Cursor vs VS Code
 
-## 17. Checklist final
+Cursor es un editor basado en VS Code con funciones integradas de IA. No es obligatorio para este repositorio.
 
-- [ ] Git instalado
-- [ ] VSCode instalado
-- [ ] Extensión Python instalada
-- [ ] Extensión Jupyter instalada
-- [ ] UV instalado
-- [ ] Repositorio clonado
-- [ ] Proyecto abierto en VSCode
-- [ ] `uv sync` ejecutado correctamente
-- [ ] `.venv` seleccionado como intérprete
-- [ ] Archivo `.env` creado
-- [ ] API keys configuradas si aplica
-- [ ] Primer notebook ejecutado correctamente
+Para seguir el curso basta con:
+
+```txt
+VS Code + Python Extension + Jupyter Extension + uv
+```
+
+Cursor puede instalarse opcionalmente para comparar flujos de trabajo con IA, pero no reemplaza ningún requisito técnico de esta guía.
+
+## 17. 📋 Checklist final
+
+- [ ] Git instalado.
+- [ ] VS Code instalado.
+- [ ] Extensión Python instalada.
+- [ ] Extensión Jupyter instalada.
+- [ ] uv instalado.
+- [ ] Repositorio abierto desde la raíz.
+- [ ] Conda desactivado si aplica.
+- [ ] `labs/` creado si no existía.
+- [ ] `uv init` ejecutado dentro de `labs/` si no existía `labs/pyproject.toml`.
+- [ ] Dependencias base instaladas con `uv add google-genai python-dotenv`.
+- [ ] `uv sync` ejecutado desde `labs/`.
+- [ ] `labs/.venv` creado.
+- [ ] `labs/.env` creado.
+- [ ] API keys configuradas si aplica.
+- [ ] VS Code usa `labs/.venv/Scripts/python.exe`.
+- [ ] Pyright/Pylance apuntan a `labs/.venv`.
+- [ ] Imports básicos validados.
+- [ ] Primer laboratorio ejecutado correctamente.
+
+## 📎 Anexos
+
+### A. Cambiar la versión de Python del entorno
+
+Este procedimiento está fuera de la instalación diaria. Úsalo cuando necesites cambiar la versión de Python del entorno virtual de `labs/`.
+
+#### A.1. Instalar la versión requerida de Python con uv
+
+Para instalar la versión usada actualmente por los laboratorios:
+
+```powershell
+uv python install 3.12.11
+```
+
+Verifica que uv la detecte:
+
+```powershell
+uv python list
+```
+
+#### A.2. Configurar la versión esperada
+
+Edita:
+
+```txt
+labs/.python-version
+```
+
+Y deja:
+
+```txt
+3.12.11
+```
+
+#### A.3. Cerrar procesos que usen el entorno
+
+Antes de borrar `.venv`, cierra terminales, notebooks o procesos que lo estén usando.
+
+Si la terminal muestra el entorno activo, por ejemplo `(labs)`, intenta:
+
+```powershell
+deactivate
+```
+
+Si no funciona, cierra la terminal integrada de VS Code y abre una nueva.
+
+#### A.4. Borrar solo el entorno virtual
+
+Desde `labs/`:
+
+```powershell
+Remove-Item -LiteralPath ".\.venv" -Recurse -Force
+```
+
+Este comando elimina solo:
+
+```txt
+labs/.venv
+```
+
+No elimina `labs/` ni los archivos de los laboratorios.
+
+#### A.5. Recrear el entorno
+
+Desde `labs/`:
+
+```powershell
+uv sync
+```
+
+Si uv encuentra la versión configurada, debería mostrar algo similar a:
+
+```txt
+Using CPython 3.12.11
+Creating virtual environment at: .venv
+```
+
+#### A.6. Verificar la versión e imports
+
+```powershell
+.\.venv\Scripts\python.exe --version
+.\.venv\Scripts\python.exe -c "from dotenv import load_dotenv; from google import genai; print('imports ok')"
+```
+
+### B. Inicializar un proyecto uv desde cero
+
+Este anexo aplica si estás creando otro proyecto Python fuera de `labs/` o si necesitas repetir el patrón en un nuevo laboratorio independiente.
+
+```powershell
+uv init
+uv venv
+uv add openai jupyter ipykernel
+```
+
+Estructura esperada:
+
+```txt
+mi-proyecto
+├── .venv
+├── pyproject.toml
+├── uv.lock
+└── README.md
+```
+
+### C. Verificar si un paquete está instalado
+
+La forma más directa es importarlo usando el Python del entorno virtual.
+
+Desde la raíz del proyecto:
+
+```powershell
+.\labs\.venv\Scripts\python.exe -c "import dotenv; print(dotenv.__file__)"
+```
+
+Si está instalado, obtendrás una ruta similar a:
+
+```txt
+D:\Fuentes\Core\ai-agent-labs\labs\.venv\Lib\site-packages\dotenv\__init__.py
+```
+
+### D. Nombres de paquetes vs nombres de imports
+
+El nombre usado para instalar un paquete no siempre coincide con el nombre usado para importarlo.
+
+Ejemplo:
+
+```powershell
+uv add python-dotenv
+```
+
+Pero en Python se importa así:
+
+```python
+from dotenv import load_dotenv
+```
+
+### E. Warning de hardlinks en uv
+
+Durante `uv sync` puede aparecer un warning como:
+
+```txt
+warning: Failed to hardlink files; falling back to full copy.
+```
+
+No es un error. Significa que uv no pudo usar hardlinks desde su caché y copió los archivos normalmente. El entorno queda funcional.
+
+Si quieres ocultar el warning, puedes usar:
+
+```powershell
+uv sync --link-mode=copy
+```
+
+### F. Cuando Pylance sigue mostrando warnings
+
+Si el paquete se puede importar por consola pero Pylance sigue mostrando advertencias, normalmente el problema no es la instalación. Causas comunes:
+
+- VS Code está usando otro intérprete Python.
+- Pylance conserva caché anterior.
+- La ventana de VS Code necesita recargarse.
+
+Acciones recomendadas:
+
+```txt
+Python: Select Interpreter → labs\.venv\Scripts\python.exe
+Developer: Reload Window
+Cerrar y abrir de nuevo el archivo Python afectado
+```
 
 [REGRESAR](./README.md)

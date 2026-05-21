@@ -1,4 +1,5 @@
 .env
+.venv
 codex/
 !doc/codex/
 !doc/codex/**
