@@ -3,3 +3,4 @@
 codex/
 !doc/codex/
 !doc/codex/**
+__pycache__/

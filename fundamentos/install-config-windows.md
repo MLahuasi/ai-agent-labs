@@ -180,7 +180,7 @@ uv python pin 3.12.11
 Instala las dependencias necesarias para los laboratorios actuales:
 
 ```powershell
-uv add google-genai python-dotenv
+uv add google-genai openai python-dotenv
 ```
 
 Al instalar dependencias, uv actualiza:
@@ -260,6 +260,12 @@ Para los laboratorios de Gemini, la variable estándar del repositorio es:
 
 ```env
 GEMINI_API_KEY=tu_api_key_aqui
+```
+
+Para los laboratorios de OpenIA/OpenAI, la variable estándar del repositorio es:
+
+```env
+OPENAI_API_KEY=tu_api_key_aqui
 ```
 
 No subas archivos `.env` a GitHub. Verifica que `.gitignore` incluya:
@@ -350,7 +356,7 @@ Python 3.12.11
 Verifica imports básicos de los laboratorios actuales:
 
 ```powershell
-.\.venv\Scripts\python.exe -c "from dotenv import load_dotenv; from google import genai; print('imports ok')"
+.\.venv\Scripts\python.exe -c "from dotenv import load_dotenv; from google import genai; from openai import OpenAI; print('imports ok')"
 ```
 
 Salida esperada:
@@ -362,7 +368,7 @@ imports ok
 También puedes validar con uv:
 
 ```powershell
-uv run python -c "from dotenv import load_dotenv; from google import genai; print('imports ok')"
+uv run python -c "from dotenv import load_dotenv; from google import genai; from openai import OpenAI; print('imports ok')"
 ```
 
 ## 13. ▶️ Ejecutar laboratorios
@@ -375,6 +381,23 @@ Ejemplo:
 cd D:\Fuentes\Core\ai-agent-labs\labs\01-gemini-api-config
 uv run python main.py
 ```
+
+Tambien puedes ejecutar desde `labs/` apuntando al directorio del laboratorio:
+
+```powershell
+cd D:\Fuentes\Core\ai-agent-labs\labs
+uv run python .\01-gemini-api-config\main.py
+uv run python .\01-openia-api-config\main.py
+```
+
+Los laboratorios pueden reutilizar configuracion por proveedor desde:
+
+```txt
+labs/config/gemini/
+labs/config/openia/
+```
+
+Cada laboratorio agrega `labs/` a `sys.path` cuando necesita importar esos modulos de configuracion.
 
 Si usas notebooks, selecciona el kernel del entorno:
 
@@ -407,7 +430,7 @@ uv add nombre-paquete
 Ejemplo:
 
 ```powershell
-uv add google-genai python-dotenv
+uv add google-genai openai python-dotenv
 ```
 
 Eliminar una dependencia:
@@ -466,7 +489,7 @@ Cursor puede instalarse opcionalmente para comparar flujos de trabajo con IA, pe
 - [ ] Conda desactivado si aplica.
 - [ ] `labs/` creado si no existía.
 - [ ] `uv init` ejecutado dentro de `labs/` si no existía `labs/pyproject.toml`.
-- [ ] Dependencias base instaladas con `uv add google-genai python-dotenv`.
+- [ ] Dependencias base instaladas con `uv add google-genai openai python-dotenv`.
 - [ ] `uv sync` ejecutado desde `labs/`.
 - [ ] `labs/.venv` creado.
 - [ ] `labs/.env` creado.
@@ -557,7 +580,7 @@ Creating virtual environment at: .venv
 
 ```powershell
 .\.venv\Scripts\python.exe --version
-.\.venv\Scripts\python.exe -c "from dotenv import load_dotenv; from google import genai; print('imports ok')"
+.\.venv\Scripts\python.exe -c "from dotenv import load_dotenv; from google import genai; from openai import OpenAI; print('imports ok')"
 ```
 
 ### B. Inicializar un proyecto uv desde cero
@@ -644,4 +667,8 @@ Developer: Reload Window
 Cerrar y abrir de nuevo el archivo Python afectado
 ```
 
-[REGRESAR](./README.md)
+## Menu
+
+- [Configuracion de Gemini API](../labs/config/gemini-api-config.md)
+- [Configuracion de OpenIA API](../labs/config/openia-api-config.md)
+- [REGRESAR](./README.md)

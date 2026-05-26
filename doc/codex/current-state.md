@@ -4,7 +4,7 @@ Este archivo almacena el contexto operativo vigente para futuros hilos de Codex.
 
 ## Ultimo hilo generado
 
-Ultimo hilo generado: [Hilo 002: environment y gemini config](./threads/202605211652-environment-y-gemini-config.md)
+Ultimo hilo generado: [Hilo 004: configurar-apis-ia](./threads/202605261344-configurar-apis-ia.md)
 
 ## Contexto vigente
 
@@ -22,30 +22,30 @@ La persistencia entre hilos queda centralizada exclusivamente en `doc/codex/`.
 
 ## Mas reciente realizado
 
-Se configuro y valido el primer laboratorio de Gemini API dentro de `labs/`:
+Se configuro la base del proyecto para trabajar con Gemini y OpenIA/OpenAI dentro de `labs/`:
 
-- Se documento la configuracion de Gemini API en `labs/config/gemini-api-config.md`.
-- Se documento la configuracion del entorno Python en `labs/config/environment-config.md`.
-- Se establecio `GEMINI_API_KEY` como variable de entorno estandar.
-- Se configuro VS Code mediante `.vscode/settings.json`.
-- Se configuro Pylance/Pyright mediante `pyrightconfig.json`.
-- Se recreo `labs/.venv` con Python `3.12.11`.
-- Se validaron las dependencias `google-genai` y `python-dotenv`.
-- Se ejecuto correctamente `labs/01-gemini-api-config/main.py` contra Gemini API.
-- Se documento el ejemplo en `labs/01-gemini-api-config/`.
+- Se consolido `labs/01-gemini-api-config/` con configuracion reutilizable en `labs/config/gemini/`.
+- Se creo `labs/01-openia-api-config/` con configuracion reutilizable en `labs/config/openia/`.
+- Se eliminaron piezas que agregaban complejidad sin uso real, como `labs/shared/responses.py`, `labs/shared/constants.py`, `labs/01-gemini-api-config/path_bootstrap.py` y `labs/config/path_setup.py`.
+- Se actualizo la documentacion de configuracion en `labs/config/gemini-api-config.md` y `labs/config/openia-api-config.md`.
+- Se actualizo `fundamentos/install-config-windows.md` para incluir dependencias, variables de entorno, validaciones y menu para ambos proveedores.
+- Se actualizaron `doc/library/python-library-reference.md` y `doc/library/python-language-reference.md` para reflejar librerias y patrones realmente usados.
+- `labs/01-openia-api-config/main.py` se ejecuto manualmente con resultado esperado.
 
 ## Pendientes o bloqueos
 
-- Algunos README de modulos existen como archivos vacios o destinos de enlace y conviene completarlos conforme avance el contenido del curso.
-- Conviene revisar el contenido final de `labs/01-gemini-api-config/` y enlazarlo desde `labs/README.md` si se decide mantener una ruta ordenada de laboratorios.
+- Falta ejecutar manualmente `labs/01-gemini-api-config/main.py` cuando haya cuota disponible en Gemini.
+- El unico bloqueo vigente es externo: limite de cuota o tokens del free tier de Gemini.
 
-Todo pendiente no resuelto debe proponerse para continuidad en el siguiente hilo, salvo que el usuario indique que no es necesario.
+Agregar futuros laboratorios al menu de `labs/README.md` no queda como pendiente abierto; se realizara en el hilo correspondiente cuando existan nuevos laboratorios.
+
+Los hilos cerrados en `doc/codex/threads/` son inmutables. Las referencias historicas antiguas, por ejemplo a `labs/config/environment-config.md`, no deben editarse en cierres ya generados.
 
 ## Siguientes acciones recomendadas
 
 - Usar `doc/codex/current-state.md` como punto de partida del siguiente hilo.
-- Formalizar `labs/01-gemini-api-config/` como primer laboratorio estable y enlazarlo desde `labs/README.md`.
-- Continuar con un siguiente laboratorio practico usando Gemini, por ejemplo una consulta parametrizada, manejo de errores o comparacion de modelos.
+- Ejecutar `labs/01-gemini-api-config/main.py` cuando haya cuota disponible para cerrar la validacion funcional de ambos proveedores.
+- A partir de esa base, continuar con nuevos laboratorios sobre Gemini u OpenIA/OpenAI reutilizando `labs/config/gemini/` y `labs/config/openia/`.
 
 ## Regla de actualizacion
 
