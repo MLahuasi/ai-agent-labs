@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "google-genai>=2.5.0",
+    "ollama>=0.6.2",
     "openai>=2.38.0",
     "python-dotenv>=1.2.2",
 ]

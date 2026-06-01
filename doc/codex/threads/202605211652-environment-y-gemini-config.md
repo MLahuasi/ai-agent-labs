@@ -22,7 +22,7 @@ El trabajo se concentro en `labs/`, la configuracion del entorno Python del work
 - Se elimino la configuracion redundante `labs/.vscode`.
 - Se recreo el entorno virtual `labs/.venv` con Python `3.12.11`.
 - Se valido la instalacion de dependencias mediante imports por consola.
-- Se ejecuto correctamente el laboratorio `labs/01-gemini-api-config/main.py` contra Gemini API.
+- Se ejecuto correctamente el laboratorio `labs/01-api-config/gemini/main.py` contra Gemini API.
 - Se actualizo `labs/01-gemini-api-config/` para documentar el ejemplo.
 
 ## Archivos o Componentes Afectados
@@ -35,7 +35,7 @@ El trabajo se concentro en `labs/`, la configuracion del entorno Python del work
 - `labs/config/gemini-api-config.md`
 - `labs/config/environment-config.md`
 - `labs/01-gemini-api-config/`
-- `labs/01-gemini-api-config/main.py`
+- `labs/01-api-config/gemini/main.py`
 
 ## Decisiones Aplicadas
 

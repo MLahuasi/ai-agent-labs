@@ -386,8 +386,8 @@ Tambien puedes ejecutar desde `labs/` apuntando al directorio del laboratorio:
 
 ```powershell
 cd D:\Fuentes\Core\ai-agent-labs\labs
-uv run python .\01-gemini-api-config\main.py
-uv run python .\01-openia-api-config\main.py
+uv run python .\01-api-config\gemini\main.py
+uv run python .\01-api-config\openia\main.py
 ```
 
 Los laboratorios pueden reutilizar configuracion por proveedor desde:

@@ -68,7 +68,7 @@ gpt-5-nano
 
 Este laboratorio usa Chat Completions y conserva el patron conversacional del notebook base del curso, pero configura `gpt-5-nano` para reducir costo por llamada en los ejemplos actuales.
 
-Si necesitas replicar el notebook original de forma estricta, puedes cambiar temporalmente el modelo a `gpt-4o-mini` en `labs/01-openia-api-config/main.py`.
+Si necesitas replicar el notebook original de forma estricta, puedes cambiar temporalmente el modelo a `gpt-4o-mini` en `labs/01-api-config/openia/main.py`.
 
 Referencias:
 
@@ -77,7 +77,7 @@ Referencias:
 
 ## Ejemplo minimo de consulta
 
-Un [laboratorio inicial](../01-openia-api-config/main.py) puede usar esta estructura:
+Un [laboratorio inicial](../01-api-config/openia/main.py) puede usar esta estructura:
 
 ```python
 from openai import OpenAI
@@ -100,7 +100,7 @@ Ejecucion sugerida:
 
 ```powershell
 cd labs
-uv run python .\01-openia-api-config\main.py
+uv run python .\01-api-config\openia\main.py
 ```
 
 ## Notas operativas
@@ -114,4 +114,4 @@ uv run python .\01-openia-api-config\main.py
 - `labs/config/openia/openai_client.py` crea el cliente `OpenAI()`.
 - `labs/config/openia/tools.py` contiene utilidades especificas de Chat Completions.
 - Los scripts del laboratorio agregan `labs/` a `sys.path` para poder importar `config.openia`.
-- El laboratorio de OpenIA vive en [`01-openia-api-config/main.py`](../01-openia-api-config/main.py).
+- El laboratorio de OpenIA vive en [`01-api-config/openia/main.py`](../01-api-config/openia/main.py).

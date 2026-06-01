@@ -2,7 +2,7 @@ import time
 import sys
 from pathlib import Path
 
-LABS_DIR = Path(__file__).resolve().parents[1]
+LABS_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(LABS_DIR))
 
 from openai import OpenAI
