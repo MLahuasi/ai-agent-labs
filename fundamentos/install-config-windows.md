@@ -180,7 +180,7 @@ uv python pin 3.12.11
 Instala las dependencias necesarias para los laboratorios actuales:
 
 ```powershell
-uv add google-genai openai python-dotenv
+uv add google-genai openai ollama python-dotenv
 ```
 
 Al instalar dependencias, uv actualiza:
@@ -251,6 +251,7 @@ Dentro de `labs/.env`, agrega las claves que necesites para cada laboratorio:
 ```env
 OPENAI_API_KEY=tu_api_key_aqui
 GEMINI_API_KEY=tu_api_key_aqui
+OLLAMA_HOST=http://localhost:11434
 GOOGLE_API_KEY=tu_api_key_aqui
 ANTHROPIC_API_KEY=tu_api_key_aqui
 DEEPSEEK_API_KEY=tu_api_key_aqui
@@ -267,6 +268,14 @@ Para los laboratorios de OpenIA/OpenAI, la variable estándar del repositorio es
 ```env
 OPENAI_API_KEY=tu_api_key_aqui
 ```
+
+Para los laboratorios de Ollama, la variable opcional es:
+
+```env
+OLLAMA_HOST=http://localhost:11434
+```
+
+Ollama no usa API key. Solo necesita el servicio local en ejecucion y los modelos descargados.
 
 No subas archivos `.env` a GitHub. Verifica que `.gitignore` incluya:
 
@@ -356,7 +365,7 @@ Python 3.12.11
 Verifica imports básicos de los laboratorios actuales:
 
 ```powershell
-.\.venv\Scripts\python.exe -c "from dotenv import load_dotenv; from google import genai; from openai import OpenAI; print('imports ok')"
+.\.venv\Scripts\python.exe -c "from dotenv import load_dotenv; from google import genai; from openai import OpenAI; from ollama import Client; print('imports ok')"
 ```
 
 Salida esperada:
@@ -368,7 +377,7 @@ imports ok
 También puedes validar con uv:
 
 ```powershell
-uv run python -c "from dotenv import load_dotenv; from google import genai; from openai import OpenAI; print('imports ok')"
+uv run python -c "from dotenv import load_dotenv; from google import genai; from openai import OpenAI; from ollama import Client; print('imports ok')"
 ```
 
 ## 13. ▶️ Ejecutar laboratorios
@@ -388,6 +397,7 @@ Tambien puedes ejecutar desde `labs/` apuntando al directorio del laboratorio:
 cd D:\Fuentes\Core\ai-agent-labs\labs
 uv run python .\01-api-config\gemini\main.py
 uv run python .\01-api-config\openia\main.py
+uv run python .\01-api-config\ollama\main.py
 ```
 
 Los laboratorios pueden reutilizar configuracion por proveedor desde:
@@ -395,6 +405,7 @@ Los laboratorios pueden reutilizar configuracion por proveedor desde:
 ```txt
 labs/config/gemini/
 labs/config/openia/
+labs/config/ollama/
 ```
 
 Cada laboratorio agrega `labs/` a `sys.path` cuando necesita importar esos modulos de configuracion.
@@ -430,7 +441,7 @@ uv add nombre-paquete
 Ejemplo:
 
 ```powershell
-uv add google-genai openai python-dotenv
+uv add google-genai openai ollama python-dotenv
 ```
 
 Eliminar una dependencia:
@@ -489,7 +500,7 @@ Cursor puede instalarse opcionalmente para comparar flujos de trabajo con IA, pe
 - [ ] Conda desactivado si aplica.
 - [ ] `labs/` creado si no existía.
 - [ ] `uv init` ejecutado dentro de `labs/` si no existía `labs/pyproject.toml`.
-- [ ] Dependencias base instaladas con `uv add google-genai openai python-dotenv`.
+- [ ] Dependencias base instaladas con `uv add google-genai openai ollama python-dotenv`.
 - [ ] `uv sync` ejecutado desde `labs/`.
 - [ ] `labs/.venv` creado.
 - [ ] `labs/.env` creado.
@@ -580,7 +591,7 @@ Creating virtual environment at: .venv
 
 ```powershell
 .\.venv\Scripts\python.exe --version
-.\.venv\Scripts\python.exe -c "from dotenv import load_dotenv; from google import genai; from openai import OpenAI; print('imports ok')"
+.\.venv\Scripts\python.exe -c "from dotenv import load_dotenv; from google import genai; from openai import OpenAI; from ollama import Client; print('imports ok')"
 ```
 
 ### B. Inicializar un proyecto uv desde cero
@@ -671,4 +682,5 @@ Cerrar y abrir de nuevo el archivo Python afectado
 
 - [Configuracion de Gemini API](../labs/config/gemini-api-config.md)
 - [Configuracion de OpenIA API](../labs/config/openia-api-config.md)
+- [Configuracion de Ollama API](../labs/config/ollama-api-config.md)
 - [REGRESAR](./README.md)

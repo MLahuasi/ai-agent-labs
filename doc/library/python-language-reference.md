@@ -44,9 +44,11 @@ load_dotenv()
 import sys
 from pathlib import Path
 
-LABS_DIR = Path(__file__).resolve().parents[1]
+LABS_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(LABS_DIR))
 ```
+
+En los laboratorios del repositorio, `parents[2]` suele ser el ajuste correcto porque los scripts viven dentro de subcarpetas como `labs/01-api-config/gemini/`, `labs/01-api-config/openia/` y `labs/01-api-config/ollama/`.
 
 ### `__file__`
 
@@ -74,6 +76,14 @@ print(current_file.name)
 ```python
 base_dir = Path(__file__).resolve().parents[1]
 answer = response.choices[0].message.content
+```
+
+Cuando se trabaja con laboratorios de Gemini, OpenIA/OpenAI u Ollama, tambien es comun leer el texto desde:
+
+```python
+gemini_text = response.text
+openai_text = response.choices[0].message.content
+ollama_text = response.message.content
 ```
 
 ## Funciones y Retornos
@@ -301,19 +311,22 @@ def get_pair() -> tuple[str, str]:
 answer, response_id = get_pair()
 ```
 
-### Diccionarios de argumentos mediante objetos
+### Diccionarios y objetos de mensajes
 
-**Para que sirven:** en el laboratorio se crean objetos con argumentos nombrados para representar datos estructurados.
+**Para que sirven:** en el laboratorio se crean estructuras de mensajes para enviar prompts y conservar contexto de conversacion.
 
-**Cuando se usan:** cuando una libreria espera estructuras con campos claros, como `role` y `parts`.
+**Cuando se usan:** cuando una libreria espera estructuras con campos claros, como `role` y `parts`, o diccionarios simples con `role` y `content`.
 
 **Ejemplo:**
 
 ```python
-item = types.Content(
+gemini_item = types.Content(
     role="user",
     parts=[types.Part(text="Hola")],
 )
+
+openai_item = {"role": "user", "content": "Hola"}
+ollama_item = {"role": "user", "content": "Hola"}
 ```
 
 ### `frozenset`

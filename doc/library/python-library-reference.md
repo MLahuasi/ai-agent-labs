@@ -256,6 +256,31 @@ except APIStatusError as error:
     print(error.status_code)
 ```
 
+### `ollama`
+
+**Que hace:** es el SDK de Python para usar Ollama de forma local. En el laboratorio se usa para crear un cliente con `Client()` y llamar a `client.chat()` contra modelos descargados en la maquina.
+
+**Cuando se usa:** cuando una aplicacion Python necesita ejecutar modelos locales sin API key, comparar respuestas contra proveedores de nube o trabajar con modelos de programacion como `qwen2.5-coder:3b`.
+
+**Ejemplo basico con `Client`:**
+
+```python
+from ollama import Client
+
+client = Client()
+
+messages = [
+    {"role": "user", "content": "Explica en una frase que es un agente de IA."}
+]
+
+response = client.chat(
+    model="gemma3:4b",
+    messages=messages,
+)
+
+print(response.message.content)
+```
+
 ## Modulos Internos del Laboratorio
 
 Estos modulos no son librerias externas, pero organizan el ejemplo:
@@ -266,6 +291,9 @@ Estos modulos no son librerias externas, pero organizan el ejemplo:
 - `config.openia.config`: carga y valida `OPENAI_API_KEY`, y define codigos retryables.
 - `config.openia.openai_client`: crea el cliente de OpenAI.
 - `config.openia.tools`: contiene utilidades especificas de OpenAI Chat Completions.
+- `config.ollama.config`: carga `OLLAMA_HOST`, define modelos recomendados y codigos retryables.
+- `config.ollama.ollama_client`: crea el cliente de Ollama.
+- `config.ollama.tools`: contiene utilidades especificas de Ollama para retry, preguntas y lectura de `response.message.content`.
 - `generate_content_example`: ejecuta una consulta con `client.models.generate_content`.
 - `generate_response_example`: ejecuta una consulta con `client.chat.completions.create`.
-- `chat_example`: ejecuta una conversacion con `client.chats.create` en Gemini o con una lista `messages` en OpenAI.
+- `chat_example`: ejecuta una conversacion con `client.chats.create` en Gemini o con una lista `messages` en OpenAI y Ollama.
