@@ -159,6 +159,8 @@ Ollama sirve como referencia local gratuita, mientras que Gemini y OpenIA/OpenAI
 
 - Ollama no necesita API key.
 - El cliente Python puede apuntar al host local por defecto.
+- Antes de ejecutar el laboratorio, verifica que `http://localhost:11434/api/tags` responda.
+- Si la app de Ollama esta abierta pero el puerto `11434` rechaza conexiones, el servicio todavia no esta disponible para la API.
 - Si Ollama no esta corriendo, el laboratorio fallara al intentar enviar la primera consulta.
 - Los modelos pequenos como `qwen2.5-coder:3b` y `gemma3:4b` son adecuados para el hardware descrito en este proyecto.
 - Para comparaciones justas, conviene reutilizar exactamente los mismos prompts entre `labs/config/gemini/`, `labs/config/openia/` y `labs/config/ollama/`.

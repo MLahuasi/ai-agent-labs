@@ -10,7 +10,7 @@ Al finalizar esta guía deberías tener:
 - Git instalado.
 - VS Code preparado para Python y notebooks.
 - `uv` instalado como gestor de entorno, paquetes y versiones de Python.
-- El proyecto abierto desde la raíz del repositorio.
+- El proyecto abierto desde `labs/`.
 - El entorno virtual de laboratorios creado en `labs/.venv`.
 - VS Code y Pylance apuntando al intérprete correcto.
 - Variables de entorno configuradas en `labs/.env`.
@@ -104,10 +104,10 @@ uv se usa en este proyecto para:
 Abre una terminal en la carpeta donde quieras trabajar y entra al repositorio:
 
 ```powershell
-cd D:\Fuentes\Core\ai-agent-labs
+cd D:\Fuentes\Core\ai-agent-labs\labs
 ```
 
-Abre el proyecto en VS Code desde la raíz:
+Abre el proyecto en VS Code desde `labs/`:
 
 ```powershell
 code .
@@ -116,10 +116,10 @@ code .
 También puedes abrirlo manualmente:
 
 ```txt
-VS Code → File → Open Folder → seleccionar ai-agent-labs
+VS Code → File → Open Folder → seleccionar labs
 ```
 
-> Abre siempre la raíz del repositorio, no solo `labs/`, porque la configuración del workspace vive en archivos de nivel raíz como `.vscode/settings.json` y `pyrightconfig.json`.
+> Abre `labs/` como workspace de VS Code. Ahí vive el proyecto Python ejecutable y también la configuración del editor para intérprete, variables de entorno y análisis estático.
 
 ## 6. 🧹 Desactivar Conda si aplica
 
@@ -277,26 +277,29 @@ OLLAMA_HOST=http://localhost:11434
 
 Ollama no usa API key. Solo necesita el servicio local en ejecucion y los modelos descargados.
 
-No subas archivos `.env` a GitHub. Verifica que `.gitignore` incluya:
+No subas archivos `.env`, entornos virtuales ni cachés locales de `uv` a GitHub. Verifica que `.gitignore` incluya:
 
 ```gitignore
 .env
 .venv
+.uv-cache/
 labs/.env
 labs/.venv
 ```
 
+En este repositorio, el entorno de Python usado por VS Code, Jupyter y Pylance para los laboratorios es `labs/.venv`. Un `.venv` en la raíz de `ai-agent-labs` no forma parte del flujo recomendado y puede hacer más confusa la selección de intérprete.
+
 ## 10. 🧠 Configurar VS Code
 
-El repositorio puede indicar a VS Code qué intérprete usar mediante [.vscode/settings.json](../.vscode/settings.json):
+El proyecto puede indicar a VS Code qué intérprete usar mediante [labs/.vscode/settings.json](../labs/.vscode/settings.json):
 
 Contenido recomendado:
 
 ```json
 {
-  "python.defaultInterpreterPath": "${workspaceFolder}/labs/.venv/Scripts/python.exe",
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
   "python.terminal.useEnvFile": true,
-  "python.envFile": "${workspaceFolder}/labs/.env"
+  "python.envFile": "${workspaceFolder}/.env"
 }
 ```
 
@@ -305,6 +308,14 @@ Qué hace cada propiedad:
 - `python.defaultInterpreterPath`: usa el Python del entorno virtual de `labs/`.
 - `python.terminal.useEnvFile`: permite cargar variables desde `.env` en terminales Python.
 - `python.envFile`: define `labs/.env` como archivo de entorno del workspace.
+
+Al abrir una terminal PowerShell desde VS Code, la extensión de Python puede ejecutar automáticamente la activación del entorno seleccionado. Por eso es normal ver un comando similar a:
+
+```powershell
+(Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned) ; (& D:\Fuentes\Core\ai-agent-labs\labs\.venv\Scripts\Activate.ps1)
+```
+
+Ese `Set-ExecutionPolicy` aplica solo a la sesión actual de PowerShell y permite ejecutar `Activate.ps1` sin cambiar la política global del sistema.
 
 También puedes seleccionar manualmente el intérprete:
 
@@ -323,21 +334,21 @@ Developer: Reload Window
 
 ## 11. 🔎 Configurar Pylance y Pyright
 
-Pylance usa Pyright para analizar imports y tipos. Para que analice los laboratorios con el entorno correcto, el repositorio debe tener [pyrightconfig.json](../pyrightconfig.json):
+Pylance usa Pyright para analizar imports y tipos. Para que analice los laboratorios con el entorno correcto, `labs/` debe tener [labs/pyrightconfig.json](../labs/pyrightconfig.json):
 
 Contenido recomendado:
 
 ```json
 {
-  "include": ["labs"],
-  "venvPath": "./labs",
+  "include": ["."],
+  "venvPath": ".",
   "venv": ".venv"
 }
 ```
 
 Qué hace cada propiedad:
 
-- `include`: limita el análisis principal a `labs/`.
+- `include`: analiza el workspace actual de `labs/`.
 - `venvPath`: indica dónde buscar entornos virtuales.
 - `venv`: indica el nombre del entorno virtual.
 
@@ -496,7 +507,7 @@ Cursor puede instalarse opcionalmente para comparar flujos de trabajo con IA, pe
 - [ ] Extensión Python instalada.
 - [ ] Extensión Jupyter instalada.
 - [ ] uv instalado.
-- [ ] Repositorio abierto desde la raíz.
+- [ ] `labs/` abierto como workspace en VS Code.
 - [ ] Conda desactivado si aplica.
 - [ ] `labs/` creado si no existía.
 - [ ] `uv init` ejecutado dentro de `labs/` si no existía `labs/pyproject.toml`.
@@ -629,6 +640,8 @@ Si está instalado, obtendrás una ruta similar a:
 ```txt
 D:\Fuentes\Core\ai-agent-labs\labs\.venv\Lib\site-packages\dotenv\__init__.py
 ```
+
+Si en algún momento aparece también `D:\Fuentes\Core\ai-agent-labs\.venv`, trátalo como un entorno sobrante del workspace raíz y elimínalo para evitar que VS Code o Pylance seleccionen el intérprete equivocado.
 
 ### D. Nombres de paquetes vs nombres de imports
 
