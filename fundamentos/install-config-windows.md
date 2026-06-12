@@ -398,7 +398,7 @@ Ejecuta un archivo Python desde el directorio del laboratorio correspondiente.
 Ejemplo:
 
 ```powershell
-cd D:\Fuentes\Core\ai-agent-labs\labs\01-gemini-api-config
+cd D:\Fuentes\Core\ai-agent-labs\labs\01-api-config\gemini
 uv run python main.py
 ```
 

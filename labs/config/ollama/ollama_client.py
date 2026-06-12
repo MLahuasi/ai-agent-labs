@@ -1,45 +1,118 @@
-from urllib.error import HTTPError, URLError
-from urllib.parse import urlsplit
-from urllib.request import urlopen
+import sys
+import time
+from pathlib import Path
+from typing import Any
 
-from ollama import Client
+LABS_DIR = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(LABS_DIR))
 
-from config.ollama.config import load_ollama_host
+from config.shared.types import ChatMessage
+from ollama import ChatResponse, Client
+
+from config.ollama.config import (
+    OLLAMA_CHAT_OPTIONS,
+    RETRYABLE_STATUS_CODES,
+    load_ollama_host,
+)
 
 
 def create_ollama_client() -> Client:
     return Client(host=load_ollama_host())
 
 
-def get_ollama_host() -> str:
-    return load_ollama_host()
+def build_ollama_history(messages: list[ChatMessage]) -> list[dict[str, str]]:
+    history: list[dict[str, str]] = []
+
+    for message in messages:
+        role = "user" if message["role"] == "user" else "assistant"
+        history.append(
+            {
+                "role": role,
+                "content": message["content"],
+            }
+        )
+
+    return history
 
 
-def _build_tags_url(host: str) -> str:
-    normalized_host = host.rstrip("/")
-    return f"{normalized_host}/api/tags"
+def send_chat_message_with_retry(
+    client: Client,
+    model: str,
+    history: list[ChatMessage],
+    question: str,
+    max_retries: int = 3,
+) -> ChatResponse:
+    messages = build_ollama_history(history)
+    messages.append({"role": "user", "content": question})
 
+    for attempt in range(1, max_retries + 1):
+        try:
+            # The ollama SDK exposes overloads that Pyright cannot fully resolve here.
+            chat_fn: Any = client.chat  # pyright: ignore[reportUnknownMemberType,reportUnknownVariableType]
+            return chat_fn(
+                model=model,
+                messages=messages,
+                stream=False,
+                options=OLLAMA_CHAT_OPTIONS,
+            )
+        except Exception as error:
+            status_code = getattr(error, "status_code", None)
 
-def assert_ollama_server_available(host: str, timeout_seconds: float = 3.0) -> None:
-    tags_url = _build_tags_url(host)
+            if status_code not in RETRYABLE_STATUS_CODES:
+                raise
 
-    try:
-        with urlopen(tags_url, timeout=timeout_seconds) as response:
-            status_code = getattr(response, "status", None)
-
-            if status_code != 200:
+            if attempt == max_retries:
                 raise RuntimeError(
-                    f"Ollama respondio con estado HTTP {status_code} en {tags_url}."
-                )
-    except HTTPError as error:
-        raise RuntimeError(
-            f"Ollama respondio con estado HTTP {error.code} en {tags_url}."
-        ) from error
-    except URLError as error:
-        parsed = urlsplit(host)
-        host_port = parsed.netloc or parsed.path or host
-        raise RuntimeError(
-            "No se pudo conectar al servidor de Ollama en "
-            f"{host_port}. Verifica que el servicio este levantado y "
-            "escuchando en ese host."
-        ) from error
+                    f"Ollama no respondio despues de {max_retries} intentos. "
+                    f"Ultimo error: {status_code}"
+                ) from error
+
+            wait_seconds = 2 ** attempt
+            print(
+                f"Ollama ocupado o con error temporal [{status_code}]. "
+                f"Reintentando en {wait_seconds}s..."
+            )
+            time.sleep(wait_seconds)
+
+    raise RuntimeError("No se pudo completar la consulta a Ollama.")
+
+
+def get_response_text(response: ChatResponse) -> str:
+    message = getattr(response, "message", None)
+
+    if message is None:
+        raise ValueError("Ollama no devolvio un mensaje de respuesta.")
+
+    text = getattr(message, "content", None)
+
+    if text is None:
+        raise ValueError("Ollama no devolvio contenido de texto.")
+
+    text = text.strip()
+
+    if not text:
+        raise ValueError("Ollama devolvio una respuesta vacia.")
+
+    return text
+
+
+def ask_chat_question(
+    client: Client,
+    model: str,
+    messages: list[ChatMessage],
+    role: str,
+    question: str,
+) -> str:
+    response = send_chat_message_with_retry(
+        client=client,
+        model=model,
+        history=messages,
+        question=question,
+    )
+
+    answer = get_response_text(response)
+
+    messages.append({"role": role, "content": question})
+    messages.append({"role": "assistant", "model": model, "content": answer})
+
+    return answer

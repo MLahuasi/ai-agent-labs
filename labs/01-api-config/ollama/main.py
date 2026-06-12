@@ -4,40 +4,30 @@ from pathlib import Path
 LABS_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(LABS_DIR))
 
-from chat_example import execute_chat_completion_custom_example, execute_chat_completion_example
-from config.ollama.config import OLLAMA_CODE_MODEL, OLLAMA_GENERAL_MODEL
-from config.ollama.ollama_client import (
-    assert_ollama_server_available,
+from chat_example import (
     create_ollama_client,
-    get_ollama_host,
+    execute_chat_custom_example
 )
+# from config.ollama.config import OLLAMA_CODE_MODEL
+from config.shared.types import ChatMessage
 
 
-MODELS_TO_COMPARE = (
-    OLLAMA_CODE_MODEL,
-    # OLLAMA_GENERAL_MODEL,
-)
-
+MODEL_NAME = "qwen2.5-coder:3b"
+# MODEL_NAME = "gemma3:4b"
 
 def main() -> None:
-    host = get_ollama_host()
-    assert_ollama_server_available(host)
 
     client = create_ollama_client()
 
-    print(f"La conexion local de Ollama existe en {host}.")
+    messages: list[ChatMessage] = []
 
-    for model in MODELS_TO_COMPARE:
-        print(f"===== MODELO: {model} =====")
+    execute_chat_custom_example(
+        client=client,
+        messages=messages,
+        model=MODEL_NAME
+    )
 
-        execute_chat_completion_example(
-            client=client,
-            model=model,
-        )
-        execute_chat_completion_custom_example(
-            client=client,
-            model=model,
-        )
+    print(messages)
 
 
 if __name__ == "__main__":

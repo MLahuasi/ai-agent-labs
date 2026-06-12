@@ -176,6 +176,36 @@ def add(left: int, right: int) -> int:
     return left + right
 ```
 
+En este proyecto conviene preferir tipos concretos del SDK o colecciones tipadas antes que `Any`, para que `pyright` pueda detectar errores reales durante los cambios entre proveedores.
+
+### Genericos de colecciones
+
+**Para que sirven:** expresan el tipo esperado dentro de listas, diccionarios, tuplas u otras colecciones.
+
+**Cuando se usan:** cuando se quiere que Pyright valide la forma de `messages`, respuestas o configuraciones compartidas entre laboratorios.
+
+**Ejemplo:**
+
+```python
+messages: list[dict[str, str]] = []
+models: tuple[str, str] = ("gpt-5-nano", "qwen2.5-coder:3b")
+```
+
+### Tipado estricto
+
+**Para que sirve:** obliga a declarar mejor las formas de los datos y hace visibles errores de compatibilidad entre funciones y modulos.
+
+**Cuando se usa:** cuando el proyecto ejecuta `pyright` con `typeCheckingMode = "strict"` y se quiere mantener contratos coherentes entre Gemini, OpenIA/OpenAI y Ollama.
+
+**Ejemplo:**
+
+```python
+def get_response_text(response: ChatCompletion) -> str:
+    ...
+```
+
+En `strict`, dejar retornos o parametros sin tipar reduce mucho el valor del analisis.
+
 ### Parametros con valor por defecto
 
 **Para que sirven:** permiten llamar una funcion sin pasar todos los argumentos.

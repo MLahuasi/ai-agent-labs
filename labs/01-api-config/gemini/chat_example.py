@@ -1,27 +1,26 @@
 import sys
 from pathlib import Path
-from typing import Any
 
 LABS_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(LABS_DIR))
 
-from google import genai
-
-from config.gemini.tools import ask_chat_question
-from config.gemini.config import GEMINI_GENERATION_CONFIG
-
-
-def create_chat(client: genai.Client, model: str) -> Any:
-    return client.chats.create(
-        model=model,
-        config=GEMINI_GENERATION_CONFIG,
-    )
+from config.gemini.gemini_client import create_gemini_client as create_base_gemini_client, ask_chat_question
+from config.shared.types import ChatMessage
+from google.genai import Client
 
 
-def execute_chat_completion_example(client: genai.Client, model: str) -> None:
-    print("*** CHAT COMPLETIONS ***")
 
-    chat = create_chat(client, model)
+
+def create_gemini_client() -> Client:
+    return create_base_gemini_client()
+
+
+def execute_chat_example(
+        client: Client,
+        model: str,
+        messages: list[ChatMessage],
+) -> None:
+    print("*** CHAT GEMINI ***")
 
     question = (
         "Proponga una pregunta difícil y desafiante para evaluar "
@@ -29,34 +28,59 @@ def execute_chat_completion_example(client: genai.Client, model: str) -> None:
         "Responde únicamente con la pregunta."
     )
 
-    answer = ask_chat_question(chat, question)
+    answer = ask_chat_question(
+        client=client,
+        messages=messages,
+        model=model,
+        question=question,
+        role="user"
+    )
+    print("- Respuesta Gemini:", answer)
 
-    print("---- Respuesta Gemini -----")
 
-    ask_chat_question(chat, answer)
-
-
-def execute_chat_completion_custom_example(client: genai.Client, model: str) -> None:
-    print("------- EJEMPLO AGENTIC SIMPLE -------")
-    chat = create_chat(client, model)
+def execute_chat_custom_example(
+        client: Client,
+        model: str,
+        messages: list[ChatMessage],
+) -> None:
+    print("------- GEMINI AGENTIC SIMPLE -------")
 
     question = (
         "Elige una tarea cotidiana que pueda mejorar con un agente de IA. "
         "Responde solo con el nombre de la tarea, maximo 6 palabras."
     )
 
-    task = ask_chat_question(chat, question)
+    answer = ask_chat_question(
+        client=client,
+        messages=messages,
+        model=model,
+        question=question,
+        role="user"
+    )
+    # print("- Respuesta Gemini:", answer)
 
     question = (
-        f"Para la tarea '{task}', identifica el principal obstaculo. "
+        f"Para la tarea '{answer}', identifica el principal obstaculo. "
         "Responde en una frase de maximo 12 palabras."
     )
 
-    obstacle = ask_chat_question(chat, question)
+    answer = ask_chat_question(
+        client=client,
+        messages=messages,
+        model=model,
+        question=question,
+        role="user"
+    )
 
     question = (
-        f"Propon una accion concreta para resolver este obstaculo: '{obstacle}'. "
+        f"Propon una accion concreta para resolver este obstaculo: '{answer}'. "
         "Responde en una frase de maximo 15 palabras."
     )
 
-    ask_chat_question(chat, question)
+    answer = ask_chat_question(
+        client=client,
+        messages=messages,
+        model=model,
+        question=question,
+        role="user"
+    )

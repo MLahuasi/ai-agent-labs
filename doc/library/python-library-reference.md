@@ -39,18 +39,18 @@ print("Nuevo intento")
 
 ### `typing`
 
-**Que hace:** proporciona utilidades para anotaciones de tipos. En el laboratorio se usa `Any` cuando el tipo concreto de un objeto externo no esta declarado.
+**Que hace:** proporciona utilidades para anotaciones de tipos. En el laboratorio se usa para declarar listas tipadas, tipos de retorno y contratos mas estrictos para clientes y respuestas.
 
 **Cuando se usa:** cuando se quiere documentar mejor la forma esperada de parametros y retornos, o ayudar a editores como Pyright/Pylance.
 
 **Ejemplo:**
 
 ```python
-from typing import Any
+from typing import List
 
 
-def show_value(value: Any) -> None:
-    print(value)
+def join_items(items: List[str]) -> str:
+    return ", ".join(items)
 ```
 
 ### `sys`
@@ -281,6 +281,29 @@ response = client.chat(
 print(response.message.content)
 ```
 
+### `pyright`
+
+**Que hace:** es el verificador estatico de tipos usado para detectar errores de imports, firmas incompatibles y usos incorrectos de tipos en los laboratorios Python.
+
+**Ejemplo de ejecucion desde `labs/`:**
+
+```powershell
+uv run pyright .
+```
+
+**Configuracion actual del proyecto:**
+
+```json
+{
+  "include": ["."],
+  "venvPath": ".",
+  "venv": ".venv",
+  "typeCheckingMode": "strict"
+}
+```
+
+En este repositorio esa configuracion vive en [labs/pyrightconfig.json](/D:/Fuentes/Core/ai-agent-labs/labs/pyrightconfig.json).
+
 ## Modulos Internos del Laboratorio
 
 Estos modulos no son librerias externas, pero organizan el ejemplo:
@@ -294,6 +317,5 @@ Estos modulos no son librerias externas, pero organizan el ejemplo:
 - `config.ollama.config`: carga `OLLAMA_HOST`, define modelos recomendados y codigos retryables.
 - `config.ollama.ollama_client`: crea el cliente de Ollama.
 - `config.ollama.tools`: contiene utilidades especificas de Ollama para retry, preguntas y lectura de `response.message.content`.
-- `generate_content_example`: ejecuta una consulta con `client.models.generate_content`.
 - `generate_response_example`: ejecuta una consulta con `client.chat.completions.create`.
-- `chat_example`: ejecuta una conversacion con `client.chats.create` en Gemini o con una lista `messages` en OpenAI y Ollama.
+- `chat_example`: ejecuta una conversacion con una lista `messages` y helpers por proveedor en Gemini, OpenAI y Ollama.

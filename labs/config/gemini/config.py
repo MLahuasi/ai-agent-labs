@@ -16,7 +16,7 @@ def load_gemini_api_key() -> str:
 
 
 GEMINI_GENERATION_CONFIG = types.GenerateContentConfig(
-    max_output_tokens=60,
+    max_output_tokens=150,
     temperature=0.4,
 )
 

@@ -55,7 +55,7 @@ No se recomienda usar `google-generativeai` para nuevos laboratorios, porque cor
 
 ## Ejemplo minimo de consulta
 
-Un [laboratorio inicial](../01-gemini-api-config/main.py) puede usar esta estructura simplificada:
+Un ejemplo minimo con el SDK puede usar esta estructura simplificada:
 
 ```python
 from google import genai
@@ -70,11 +70,11 @@ response = client.models.generate_content(
 print(response.text)
 ```
 
-Ejecucion sugerida:
+Ejecucion sugerida del laboratorio actual:
 
 ```powershell
 cd labs
-uv run python .\01-gemini-api-config\main.py
+uv run python .\01-api-config\gemini\main.py
 ```
 
 ## Estructura usada en el repositorio
@@ -91,10 +91,10 @@ Archivos principales:
 - `gemini_client.py`: crea el cliente `genai.Client()`.
 - `tools.py`: contiene utilidades especificas de Gemini para enviar mensajes con retry, leer `response.text` y ejecutar preguntas.
 
-El laboratorio inicial vive en:
+El laboratorio actual vive en:
 
 ```txt
-labs/01-gemini-api-config/
+labs/01-api-config/gemini/
 ```
 
 Los scripts del laboratorio agregan `labs/` a `sys.path` para poder importar `config.gemini`.
@@ -105,4 +105,4 @@ Los scripts del laboratorio agregan `labs/` a `sys.path` para poder importar `co
 - Para uso local, la clave debe permanecer en `labs/.env`.
 - Los laboratorios de Gemini deben vivir en `labs/`.
 - El laboratorio actual ejecuta por defecto un ejemplo agentic simple para evitar consumir demasiadas llamadas por corrida.
-- El laboratorio de Gemini vive en [`01-gemini-api-config/main.py`](../01-gemini-api-config/main.py).
+- El laboratorio de Gemini vive en [`01-api-config/gemini/main.py`](../01-api-config/gemini/main.py).
