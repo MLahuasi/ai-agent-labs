@@ -4,7 +4,7 @@ Este archivo almacena el contexto operativo vigente para futuros hilos de Codex.
 
 ## Ultimo hilo generado
 
-Ultimo hilo generado: [Hilo 004: configurar-apis-ia](./threads/202605261344-configurar-apis-ia.md)
+Ultimo hilo generado: [Hilo 005: comparar-llms-agentes-de-ia-recursos](./threads/202606151255-comparar-llms-agentes-de-ia-recursos.md)
 
 ## Contexto vigente
 
@@ -22,20 +22,20 @@ La persistencia entre hilos queda centralizada exclusivamente en `doc/codex/`.
 
 ## Mas reciente realizado
 
-Se configuro la base del proyecto para trabajar con Gemini y OpenIA/OpenAI dentro de `labs/`:
+Se extendio la base de laboratorios para comparar proveedores y documentar recursos agénticos dentro de `labs/`:
 
-- Se consolido `labs/01-api-config/gemini/` con configuracion reutilizable en `labs/config/gemini/`.
-- Se creo `labs/01-api-config/openia/` con configuracion reutilizable en `labs/config/openia/`.
-- Se eliminaron piezas que agregaban complejidad sin uso real, como `labs/shared/responses.py`, `labs/shared/constants.py`, `labs/01-api-config/gemini/path_bootstrap.py` y `labs/config/path_setup.py`.
-- Se actualizo la documentacion de configuracion en `labs/config/gemini-api-config.md` y `labs/config/openia-api-config.md`.
-- Se actualizo `fundamentos/install-config-windows.md` para incluir dependencias, variables de entorno, validaciones y menu para ambos proveedores.
-- Se actualizaron `doc/library/python-library-reference.md` y `doc/library/python-language-reference.md` para reflejar librerias y patrones realmente usados.
-- `labs/01-api-config/openia/main.py` se ejecuto manualmente con resultado esperado.
+- Se homologaron clientes reutilizables para Gemini, OpenIA/OpenAI, Ollama y Groq dentro de `labs/config/`.
+- Se corrigieron problemas de importacion, compatibilidad de historial y rutas de archivos en laboratorios como `01-api-config`, `02-multiple-orchestration` y `03-recursos-agentes-ia`.
+- Se documento el uso de recursos en agentes usando `PDF`, `TXT` y `JSON` como contexto en `fundamentos/ia-agentes-recursos.md`.
+- Se actualizaron `doc/library/python-library-reference.md` y `doc/library/python-language-reference.md` para reflejar librerias, patrones y semantica realmente usados, incluyendo `json`, `gradio`, `pypdf`, `with`, `try/finally`, `Path` y generadores.
+- Se ajusto Groq para funcionar con la compatibilidad OpenAI usando `base_url="https://api.groq.com/openai/v1"` y el historial compartido con rol `assistant`.
 
 ## Pendientes o bloqueos
 
+- No se ejecuto validacion funcional completa de `labs/03-recursos-agentes-ia/main.py` despues de los cambios documentales y de rutas.
 - Falta ejecutar manualmente `labs/01-api-config/gemini/main.py` cuando haya cuota disponible en Gemini.
-- El unico bloqueo vigente es externo: limite de cuota o tokens del free tier de Gemini.
+- Queda razonable revisar `doc/library/README.md` para reflejar explicitamente que la referencia ya cubre `gradio` y `pypdf`.
+- El unico bloqueo externo vigente es el limite de cuota o tokens del free tier de Gemini.
 
 Agregar futuros laboratorios al menu de `labs/README.md` no queda como pendiente abierto; se realizara en el hilo correspondiente cuando existan nuevos laboratorios.
 
@@ -44,8 +44,9 @@ Los hilos cerrados en `doc/codex/threads/` son inmutables. Las referencias histo
 ## Siguientes acciones recomendadas
 
 - Usar `doc/codex/current-state.md` como punto de partida del siguiente hilo.
-- Ejecutar `labs/01-api-config/gemini/main.py` cuando haya cuota disponible para cerrar la validacion funcional de ambos proveedores.
-- A partir de esa base, continuar con nuevos laboratorios sobre Gemini u OpenIA/OpenAI reutilizando `labs/config/gemini/` y `labs/config/openia/`.
+- Ejecutar `labs/03-recursos-agentes-ia/main.py` para validar el laboratorio de recursos de extremo a extremo.
+- Actualizar `doc/library/README.md` si se quiere cerrar tambien la referencia de librerias a nivel de indice.
+- Ejecutar `labs/01-api-config/gemini/main.py` cuando haya cuota disponible para cerrar la validacion funcional pendiente del proveedor.
 
 ## Regla de actualizacion
 

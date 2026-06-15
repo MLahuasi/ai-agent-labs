@@ -88,7 +88,7 @@ En [labs/03-recursos-agentes-ia/main.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-
 
 ### `json`
 
-**Que hace:** permite convertir entre estructuras Python y texto JSON. En el laboratorio se usa para persistir y recuperar el historial de conversación.
+**Que hace:** permite convertir entre estructuras Python y texto JSON. En el laboratorio se usa para persistir y recuperar el historial de conversación, y tambien para interpretar salidas estructuradas devueltas por un LLM evaluador.
 
 **Cuando se usa:** cuando se necesita guardar listas o diccionarios en disco, intercambiar datos entre procesos o rehidratar estado en una nueva ejecucion.
 
@@ -105,6 +105,8 @@ with open("history.json", "w", encoding="utf-8") as file:
 with open("history.json", "r", encoding="utf-8") as file:
     restored = json.load(file)
 ```
+
+En [evaluator.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/evaluator.py), `json.loads()` se usa ademas para validar que el evaluador haya respondido con un objeto JSON parseable antes de aceptar su veredicto.
 
 ### `collections.abc`
 
@@ -272,6 +274,8 @@ def chat(message: str, history: list[dict[str, str]]) -> str:
 gr.ChatInterface(fn=chat).launch()
 ```
 
+En este repositorio, tanto [main.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/main.py) como [evaluator.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/evaluator.py) usan `gr.ChatInterface`, pero el segundo agrega una etapa intermedia de evaluacion y posible regeneracion antes de devolver la respuesta final a la UI.
+
 ### `pypdf`
 
 **Que hace:** permite leer archivos PDF desde Python. En el laboratorio se usa `PdfReader` para extraer texto de un CV y convertirlo en contexto para el agente.
@@ -290,6 +294,42 @@ for page in reader.pages:
     content = page.extract_text()
     if content:
         text += content
+```
+
+### `pydantic`
+
+**Que hace:** permite definir esquemas de datos y validar que una estructura cumpla la forma esperada. En el laboratorio se usa para verificar que la salida JSON del LLM evaluador tenga exactamente los campos requeridos.
+
+**Cuando se usa:** cuando un LLM debe responder en formato estructurado y se quiere rechazar respuestas mal formadas o incompletas antes de continuar el flujo.
+
+**Ejemplo basico con `BaseModel`:**
+
+```python
+from pydantic import BaseModel
+
+
+class Evaluation(BaseModel):
+    is_acceptable: bool
+    feedback: str
+```
+
+En [evaluator.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/evaluator.py), `Evaluation.model_validate(data)` comprueba que el JSON parseado desde el evaluador tenga el contrato esperado.
+
+### `pydantic.ValidationError`
+
+**Que hace:** representa un error de validacion emitido por Pydantic cuando los datos no cumplen el esquema declarado.
+
+**Cuando se usa:** cuando se parsea salida estructurada y se necesita distinguir entre "no era JSON valido" y "era JSON, pero con forma incorrecta".
+
+**Ejemplo:**
+
+```python
+from pydantic import ValidationError
+
+try:
+    evaluation = Evaluation.model_validate(data)
+except ValidationError:
+    ...
 ```
 
 ### `pyright`

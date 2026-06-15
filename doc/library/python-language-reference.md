@@ -150,6 +150,8 @@ def outer() -> str:
 
 En [labs/03-recursos-agentes-ia/main.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/main.py), `chat()` vive dentro de `main()` porque usa `openia_client`, `history` y `HISTORY_FILE` del contexto externo.
 
+En [labs/03-recursos-agentes-ia/evaluator.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/evaluator.py), la misma idea aparece con mas funciones auxiliares (`load_history`, `save_history`, `evaluate_response`, `rerun_response`) para separar cada etapa del flujo.
+
 ### `nonlocal`
 
 **Para que sirve:** permite modificar una variable definida en una funcion externa.
@@ -288,7 +290,7 @@ with open("summary.txt", "r", encoding="utf-8") as file:
     summary = file.read()
 ```
 
-En [labs/03-recursos-agentes-ia/main.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/main.py) se usa varias veces para leer `summary.txt`, leer `history.json` y volver a escribir ese historial.
+En [labs/03-recursos-agentes-ia/main.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/main.py) y [evaluator.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/evaluator.py) se usa para leer el historial persistido y volver a escribirlo sin dejar archivos abiertos.
 
 ### `open()`
 
@@ -355,6 +357,24 @@ question = (
 ```
 
 En [labs/03-recursos-agentes-ia/main.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/main.py), esta tecnica se usa para agregar reglas largas al `system_prompt` sin perder legibilidad.
+
+### Strings multilinea con triple comilla
+
+**Para que sirven:** permiten definir bloques largos de texto respetando saltos de linea.
+
+**Cuando se usan:** cuando un prompt necesita varias instrucciones, contexto y secciones claramente separadas.
+
+**Ejemplo:**
+
+```python
+prompt = f"""
+Eres un evaluador.
+
+Responde solo en JSON.
+""".strip()
+```
+
+En [labs/03-recursos-agentes-ia/evaluator.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/evaluator.py) se usan para construir el texto de evaluacion y el `retry_system_prompt`.
 
 ### f-strings
 
@@ -436,6 +456,8 @@ assistant = {"role": "assistant", "model": "gpt-5-nano", "content": "Hola"}
 
 Eso permite mover conversaciones entre OpenAI, Gemini, Groq y Ollama con una estructura comun.
 
+En [labs/03-recursos-agentes-ia/evaluator.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/evaluator.py), tambien se usa `item.get("role")` para leer claves opcionales del historial sin lanzar errores si faltan campos.
+
 ### Comprensiones y expresiones generadoras
 
 **Para que sirven:** crean colecciones o producen elementos de forma compacta.
@@ -453,6 +475,41 @@ history.extend(
 ```
 
 Ese patron aparece en [labs/03-recursos-agentes-ia/main.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/main.py) para reconstruir historial persistido sin duplicar el `system` prompt.
+
+Otra variante del mismo patron aparece en [evaluator.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/evaluator.py):
+
+```python
+has_system_prompt = any(
+    item.get("role") == "system"
+    for item in persisted
+)
+```
+
+Aqui una expresion generadora alimenta `any()` para verificar si el historial recuperado ya contiene un mensaje de sistema.
+
+### Desempaquetado con `*` dentro de listas
+
+**Para que sirve:** inserta todos los elementos de otra secuencia dentro de una lista nueva.
+
+**Cuando se usa:** cuando se necesita construir una lista base y luego anexar una coleccion existente en la misma expresion.
+
+**Ejemplo:**
+
+```python
+numbers = [0, *previous]
+```
+
+En [labs/03-recursos-agentes-ia/evaluator.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/evaluator.py) se usa para reinyectar el `system` prompt delante del historial persistido:
+
+```python
+return [
+    {
+        "role": "system",
+        "content": system_prompt,
+    },
+    *persisted,
+]
+```
 
 ### `frozenset`
 
@@ -601,6 +658,11 @@ except RuntimeError as error:
 
 - `try/except` maneja errores.
 - `try/finally` garantiza limpieza o persistencia.
+
+En [labs/03-recursos-agentes-ia/evaluator.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/evaluator.py), `try/except` tambien se usa para distinguir entre dos fallos diferentes al consumir la salida del evaluador:
+
+- el texto no era JSON valido;
+- el JSON existia, pero no cumplia el esquema esperado.
 
 ### `raise`
 

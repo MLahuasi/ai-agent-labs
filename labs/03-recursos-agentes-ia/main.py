@@ -8,10 +8,10 @@ from typing import Any
 LABS_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(LABS_DIR))
 
+from config.shared.read import read_pdf, read_text_file
 from config.shared.types import ChatMessage
 from config.openia.openai_client import create_openai_client, ask_chat_question as ask_openai_question
 
-from pypdf import PdfReader
 
 MODEL_OPENIA_NAME = "gpt-5-nano"
 BASE_DIR = Path(__file__).resolve().parent
@@ -21,17 +21,8 @@ HISTORY_FILE = DATA_DIR / "history.json"
 def main() -> None:
     openia_client = create_openai_client()
 
-    reader = PdfReader(DATA_DIR / "CV_Bilbo_Bolson.pdf")
-    cv = ""
-    for page in reader.pages:
-        text = page.extract_text()
-        if text:
-            cv += text
-
-    print(cv)
-
-    with open(DATA_DIR / "summary.txt", "r", encoding="utf-8") as f:
-        summary = f.read()
+    summary = read_text_file(DATA_DIR / "summary.txt")
+    cv = read_pdf(DATA_DIR / "CV_Bilbo_Bolson.pdf")
 
     name = "Bilbo Bolsón"
 
