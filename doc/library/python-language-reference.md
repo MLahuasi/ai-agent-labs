@@ -48,7 +48,7 @@ LABS_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(LABS_DIR))
 ```
 
-En los laboratorios del repositorio, `parents[2]` suele ser el ajuste correcto porque los scripts viven dentro de subcarpetas como `labs/01-api-config/gemini/`, `labs/01-api-config/openia/` y `labs/01-api-config/ollama/`.
+En los laboratorios del repositorio, `parents[2]` suele ser correcto para scripts dentro de `labs/01-api-config/...`. En [labs/03-recursos-agentes-ia/main.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/main.py) se usa `parents[1]` porque el archivo esta un nivel mas cerca de `labs/`.
 
 ### `__file__`
 
@@ -65,6 +65,8 @@ current_file = Path(__file__)
 print(current_file.name)
 ```
 
+En este repositorio se usa mucho junto con `Path.resolve()` para que las rutas a `data/`, `config/` o `labs/` no dependan del directorio de ejecucion.
+
 ### Acceso a atributos e indices
 
 **Para que sirve:** permite navegar objetos y colecciones usando `.` y `[]`.
@@ -78,13 +80,29 @@ base_dir = Path(__file__).resolve().parents[1]
 answer = response.choices[0].message.content
 ```
 
-Cuando se trabaja con laboratorios de Gemini, OpenIA/OpenAI u Ollama, tambien es comun leer el texto desde:
+Cuando se trabaja con distintos proveedores, tambien es comun leer el texto desde:
 
 ```python
 gemini_text = response.text
 openai_text = response.choices[0].message.content
 ollama_text = response.message.content
 ```
+
+### Operador `/` de `Path`
+
+**Para que sirve:** construye rutas de archivos y carpetas de forma portable.
+
+**Cuando se usa:** cuando se trabaja con `pathlib.Path` y se quiere evitar concatenar strings manualmente.
+
+**Ejemplo:**
+
+```python
+from pathlib import Path
+
+data_dir = Path("labs") / "03-recursos-agentes-ia" / "data"
+```
+
+Este patron es el recomendado para laboratorios del proyecto.
 
 ## Funciones y Retornos
 
@@ -129,6 +147,8 @@ def outer() -> str:
 
     return inner()
 ```
+
+En [labs/03-recursos-agentes-ia/main.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/main.py), `chat()` vive dentro de `main()` porque usa `openia_client`, `history` y `HISTORY_FILE` del contexto externo.
 
 ### `nonlocal`
 
@@ -191,11 +211,19 @@ messages: list[dict[str, str]] = []
 models: tuple[str, str] = ("gpt-5-nano", "qwen2.5-coder:3b")
 ```
 
+En el laboratorio de recursos aparece este caso:
+
+```python
+history: list[ChatMessage] = [
+    {"role": "system", "content": system_prompt}
+]
+```
+
 ### Tipado estricto
 
 **Para que sirve:** obliga a declarar mejor las formas de los datos y hace visibles errores de compatibilidad entre funciones y modulos.
 
-**Cuando se usa:** cuando el proyecto ejecuta `pyright` con `typeCheckingMode = "strict"` y se quiere mantener contratos coherentes entre Gemini, OpenIA/OpenAI y Ollama.
+**Cuando se usa:** cuando el proyecto ejecuta `pyright` con `typeCheckingMode = "strict"` y se quiere mantener contratos coherentes entre Gemini, OpenAI, Groq y Ollama.
 
 **Ejemplo:**
 
@@ -203,8 +231,6 @@ models: tuple[str, str] = ("gpt-5-nano", "qwen2.5-coder:3b")
 def get_response_text(response: ChatCompletion) -> str:
     ...
 ```
-
-En `strict`, dejar retornos o parametros sin tipar reduce mucho el valor del analisis.
 
 ### Parametros con valor por defecto
 
@@ -223,7 +249,7 @@ def retry(max_retries: int = 3) -> None:
 
 **Para que sirve:** indica que un valor puede tener mas de un tipo.
 
-**Cuando se usa:** cuando un parametro puede recibir un valor real o `None`, por ejemplo un identificador opcional.
+**Cuando se usa:** cuando un parametro puede recibir un valor real o `None`.
 
 **Ejemplo:**
 
@@ -241,11 +267,63 @@ def show(previous_id: str | None = None) -> None:
 **Ejemplo:**
 
 ```python
-response = client.models.generate_content(
-    model="gemini-2.5-flash-lite",
-    contents="Hola",
+response = client.chat.completions.create(
+    model="gpt-5-nano",
+    messages=[{"role": "user", "content": "Hola"}],
 )
 ```
+
+## Gestion de recursos y archivos
+
+### `with`
+
+**Para que sirve:** abre un contexto controlado y garantiza que el recurso se cierre al salir del bloque, incluso si ocurre un error.
+
+**Cuando se usa:** principalmente con archivos, conexiones o locks que deben liberarse correctamente.
+
+**Ejemplo:**
+
+```python
+with open("summary.txt", "r", encoding="utf-8") as file:
+    summary = file.read()
+```
+
+En [labs/03-recursos-agentes-ia/main.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/main.py) se usa varias veces para leer `summary.txt`, leer `history.json` y volver a escribir ese historial.
+
+### `open()`
+
+**Para que sirve:** abre un archivo para lectura, escritura o agregacion.
+
+**Cuando se usa:** cuando el programa necesita cargar datos externos o persistir informacion en disco.
+
+**Ejemplo:**
+
+```python
+with open("history.json", "w", encoding="utf-8") as file:
+    file.write("[]")
+```
+
+Los modos mas comunes en este proyecto son:
+
+- `"r"`: leer.
+- `"w"`: sobrescribir o crear.
+
+### `try` / `finally`
+
+**Para que sirve:** ejecuta siempre el bloque `finally`, haya error o no.
+
+**Cuando se usa:** cuando hay limpieza o persistencia obligatoria al final de una operacion larga.
+
+**Ejemplo:**
+
+```python
+try:
+    run_server()
+finally:
+    save_history()
+```
+
+En [labs/03-recursos-agentes-ia/main.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/main.py) se usa para guardar el historial incluso cuando la interfaz de Gradio se cierra inesperadamente.
 
 ## Texto y Formato
 
@@ -275,6 +353,8 @@ question = (
     "en cinco minutos, cuanto tardan cien maquinas?"
 )
 ```
+
+En [labs/03-recursos-agentes-ia/main.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/main.py), esta tecnica se usa para agregar reglas largas al `system_prompt` sin perder legibilidad.
 
 ### f-strings
 
@@ -320,7 +400,7 @@ messages = ["hola", "como estas?"]
 
 **Para que sirven:** agrupan varios valores en una estructura ordenada e inmutable.
 
-**Cuando se usan:** cuando una funcion necesita devolver mas de un valor relacionado, como texto de respuesta e identificador de respuesta.
+**Cuando se usan:** cuando una funcion necesita devolver mas de un valor relacionado.
 
 **Ejemplo:**
 
@@ -343,21 +423,36 @@ answer, response_id = get_pair()
 
 ### Diccionarios y objetos de mensajes
 
-**Para que sirven:** en el laboratorio se crean estructuras de mensajes para enviar prompts y conservar contexto de conversacion.
+**Para que sirven:** en el proyecto se crean estructuras de mensajes para enviar prompts y conservar contexto de conversacion.
 
-**Cuando se usan:** cuando una libreria espera estructuras con campos claros, como `role` y `parts`, o diccionarios simples con `role` y `content`.
+**Cuando se usan:** cuando una libreria espera estructuras con campos claros, como `role`, `content` o `model`.
 
 **Ejemplo:**
 
 ```python
-gemini_item = types.Content(
-    role="user",
-    parts=[types.Part(text="Hola")],
-)
-
-openai_item = {"role": "user", "content": "Hola"}
-ollama_item = {"role": "user", "content": "Hola"}
+message = {"role": "user", "content": "Hola"}
+assistant = {"role": "assistant", "model": "gpt-5-nano", "content": "Hola"}
 ```
+
+Eso permite mover conversaciones entre OpenAI, Gemini, Groq y Ollama con una estructura comun.
+
+### Comprensiones y expresiones generadoras
+
+**Para que sirven:** crean colecciones o producen elementos de forma compacta.
+
+**Cuando se usan:** cuando se quiere filtrar, transformar o extender listas sin escribir un bucle completo.
+
+**Ejemplo:**
+
+```python
+history.extend(
+    item
+    for item in persisted
+    if item["role"] != "system"
+)
+```
+
+Ese patron aparece en [labs/03-recursos-agentes-ia/main.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/main.py) para reconstruir historial persistido sin duplicar el `system` prompt.
 
 ### `frozenset`
 
@@ -396,6 +491,13 @@ MODEL_NAME = "gemini-2.5-flash-lite"
 ```python
 if text is None:
     raise ValueError("No hay texto")
+```
+
+En el laboratorio de recursos tambien se usa para evitar concatenar paginas vacias extraidas del PDF:
+
+```python
+if text:
+    cv += text
 ```
 
 ### `if not`
@@ -443,7 +545,7 @@ if status_code not in RETRYABLE_STATUS_CODES:
 
 **Para que sirve:** repite un bloque de codigo por cada elemento de una secuencia.
 
-**Cuando se usa:** para recorrer listas o ejecutar intentos controlados.
+**Cuando se usa:** para recorrer listas, paginas de un PDF o ejecutar intentos controlados.
 
 **Ejemplo:**
 
@@ -495,6 +597,11 @@ except RuntimeError as error:
     print(error)
 ```
 
+`try/except` y `try/finally` no resuelven el mismo problema:
+
+- `try/except` maneja errores.
+- `try/finally` garantiza limpieza o persistencia.
+
 ### `raise`
 
 **Para que sirve:** lanza una excepcion.
@@ -527,12 +634,12 @@ except Exception as error:
 
 **Para que sirve:** obtiene un atributo de un objeto de forma segura, con valor por defecto si no existe.
 
-**Cuando se usa:** cuando el objeto puede o no tener un atributo, como `error.code` o `response.text`.
+**Cuando se usa:** cuando el objeto puede o no tener un atributo, como `error.code` o `error.status_code`.
 
 **Ejemplo:**
 
 ```python
-status_code = getattr(error, "code", None)
+status_code = getattr(error, "status_code", None)
 ```
 
 ## Ejecucion de Scripts

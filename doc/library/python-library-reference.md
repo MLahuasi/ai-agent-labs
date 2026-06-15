@@ -23,7 +23,7 @@ if not api_key:
 
 ### `time`
 
-**Que hace:** ofrece funciones relacionadas con tiempo. En el laboratorio se usa `time.sleep()` para esperar antes de reintentar una llamada a Gemini.
+**Que hace:** ofrece funciones relacionadas con tiempo. En los clientes del laboratorio se usa `time.sleep()` para esperar antes de reintentar una llamada a un proveedor.
 
 **Cuando se usa:** cuando se necesita pausar la ejecucion, medir tiempos o implementar reintentos con espera entre intentos.
 
@@ -46,12 +46,14 @@ print("Nuevo intento")
 **Ejemplo:**
 
 ```python
-from typing import List
+from typing import Any
 
 
-def join_items(items: List[str]) -> str:
-    return ", ".join(items)
+def chat(message: str, history: list[dict[str, Any]]) -> str:
+    return message
 ```
+
+En [main.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/main.py), `Any` se usa para tipar la estructura que Gradio entrega al callback.
 
 ### `sys`
 
@@ -78,8 +80,30 @@ sys.path.insert(0, "labs")
 ```python
 from pathlib import Path
 
-base_dir = Path(__file__).resolve().parents[1]
-print(base_dir)
+base_dir = Path(__file__).resolve().parent
+data_dir = base_dir / "data"
+```
+
+En [labs/03-recursos-agentes-ia/main.py](/D:/Fuentes/Core/ai-agent-labs/labs/03-recursos-agentes-ia/main.py), `Path` se usa para resolver `data/` e `history.json` sin depender del directorio actual desde donde se ejecuta el script.
+
+### `json`
+
+**Que hace:** permite convertir entre estructuras Python y texto JSON. En el laboratorio se usa para persistir y recuperar el historial de conversación.
+
+**Cuando se usa:** cuando se necesita guardar listas o diccionarios en disco, intercambiar datos entre procesos o rehidratar estado en una nueva ejecucion.
+
+**Ejemplo:**
+
+```python
+import json
+
+history = [{"role": "user", "content": "Hola"}]
+
+with open("history.json", "w", encoding="utf-8") as file:
+    json.dump(history, file, indent=4, ensure_ascii=False)
+
+with open("history.json", "r", encoding="utf-8") as file:
+    restored = json.load(file)
 ```
 
 ### `collections.abc`
@@ -102,7 +126,7 @@ def run(operation: Callable[[], str]) -> str:
 
 ### `python-dotenv`
 
-**Que hace:** carga variables de entorno desde un archivo `.env`. En el laboratorio se usa `load_dotenv()` para que `GEMINI_API_KEY` quede disponible para Python.
+**Que hace:** carga variables de entorno desde un archivo `.env`.
 
 **Cuando se usa:** cuando el proyecto necesita configuracion local que no debe escribirse directamente en el codigo, como API keys, URLs o credenciales.
 
@@ -115,15 +139,15 @@ from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
-api_key = os.getenv("GEMINI_API_KEY")
+api_key = os.getenv("OPENAI_API_KEY")
 print(api_key is not None)
 ```
 
 ### `google-genai`
 
-**Que hace:** es el SDK de Google para consumir modelos Gemini desde Python. En el laboratorio se usa para crear un cliente, generar contenido, abrir un chat y manejar errores de la API.
+**Que hace:** es el SDK de Google para consumir modelos Gemini desde Python. En el proyecto se usa para crear un cliente, abrir un chat y generar respuestas con historial.
 
-**Cuando se usa:** cuando una aplicacion Python necesita llamar a Gemini para generar texto, mantener conversaciones, procesar prompts o integrar modelos generativos.
+**Cuando se usa:** cuando una aplicacion Python necesita llamar a Gemini para generar texto, mantener conversaciones o integrar modelos generativos.
 
 **Ejemplo basico con `genai.Client`:**
 
@@ -131,88 +155,50 @@ print(api_key is not None)
 from google import genai
 
 client = genai.Client()
-
-response = client.models.generate_content(
-    model="gemini-2.5-flash-lite",
-    contents="Explica en una frase que es un agente de IA.",
-)
-
-print(response.text)
-```
-
-**Ejemplo con chat:**
-
-```python
-from google import genai
-
-client = genai.Client()
 chat = client.chats.create(model="gemini-2.5-flash-lite")
 
-response = chat.send_message("Hola, responde en una frase.")
+response = chat.send_message("Explica en una frase que es un agente de IA.")
 print(response.text)
 ```
 
 ### `google.genai.types`
 
-**Que hace:** contiene tipos auxiliares del SDK. En el laboratorio se usan `types.Content`, `types.Part` y `types.GenerateContentResponse` para construir mensajes estructurados y anotar respuestas.
+**Que hace:** contiene tipos auxiliares del SDK. Puede usarse para representar mensajes, configuraciones y respuestas tipadas de Gemini.
 
 **Cuando se usa:** cuando se necesita representar conversaciones con roles, partes de contenido o respuestas tipadas del SDK.
 
 **Ejemplo:**
 
 ```python
-from google import genai
 from google.genai import types
 
-client = genai.Client()
-
-contents = [
-    types.Content(
-        role="user",
-        parts=[types.Part(text="Mi nombre es Ana")],
-    ),
-    types.Content(
-        role="user",
-        parts=[types.Part(text="Como me llamo?")],
-    ),
-]
-
-response: types.GenerateContentResponse = client.models.generate_content(
-    model="gemini-2.5-flash-lite",
-    contents=contents,
-)
+message = types.Part(text="Hola")
+print(message.text)
 ```
 
 ### `google.genai.errors`
 
-**Que hace:** contiene errores definidos por el SDK. En el laboratorio se usa `errors.APIError` para capturar fallos de la API y decidir si conviene reintentar.
+**Que hace:** contiene errores definidos por el SDK. En el proyecto se usa para capturar fallos de la API y decidir si conviene reintentar.
 
-**Cuando se usa:** cuando se quiere manejar errores de Gemini de forma controlada, por ejemplo limites de cuota, errores temporales del servidor o errores no recuperables.
+**Cuando se usa:** cuando se quiere manejar errores de Gemini de forma controlada, por ejemplo limites de cuota o errores temporales del servidor.
 
 **Ejemplo:**
 
 ```python
-from google import genai
 from google.genai import errors
 
-client = genai.Client()
-
 try:
-    response = client.models.generate_content(
-        model="gemini-2.5-flash-lite",
-        contents="Hola",
-    )
-    print(response.text)
+    ...
 except errors.APIError as error:
     status_code = getattr(error, "code", None)
-    print(f"Error de Gemini: {status_code}")
+    print(status_code)
 ```
 
 ### `openai`
 
-**Que hace:** es el SDK oficial de OpenAI para consumir la API desde Python. En el laboratorio de OpenIA se usa para crear un cliente con `OpenAI()` y llamar a Chat Completions con `client.chat.completions.create()`.
+**Que hace:** es el SDK oficial de OpenAI para consumir la API desde Python. En el proyecto tambien se reutiliza su cliente `OpenAI` para Groq mediante `base_url`.
 
-**Cuando se usa:** cuando una aplicacion Python necesita llamar a modelos de OpenAI para generar texto, crear respuestas con contexto o integrar capacidades generativas.
+**Cuando se usa:** cuando una aplicacion Python necesita llamar a modelos compatibles con la API de OpenAI para generar texto o mantener conversaciones.
 
 **Ejemplo basico con `OpenAI`:**
 
@@ -221,13 +207,9 @@ from openai import OpenAI
 
 client = OpenAI()
 
-messages = [
-    {"role": "user", "content": "Explica en una frase que es un agente de IA."}
-]
-
 response = client.chat.completions.create(
     model="gpt-5-nano",
-    messages=messages,
+    messages=[{"role": "user", "content": "Hola"}],
 )
 
 print(response.choices[0].message.content)
@@ -235,9 +217,9 @@ print(response.choices[0].message.content)
 
 ### `openai.APIStatusError`
 
-**Que hace:** representa errores HTTP devueltos por la API de OpenAI. En el laboratorio se usa para revisar `status_code` y decidir si un error temporal puede reintentarse.
+**Que hace:** representa errores HTTP devueltos por APIs compatibles con OpenAI. En el proyecto se usa para revisar `status_code` y decidir si un error temporal puede reintentarse.
 
-**Cuando se usa:** cuando se quiere manejar errores de la API de forma controlada, por ejemplo errores `500`, `502`, `503` o `504`.
+**Cuando se usa:** cuando se quiere manejar errores `500`, `502`, `503` o `504`.
 
 **Ejemplo:**
 
@@ -247,20 +229,16 @@ from openai import APIStatusError, OpenAI
 client = OpenAI()
 
 try:
-    response = client.chat.completions.create(
-        model="gpt-5-nano",
-        messages=[{"role": "user", "content": "Hola"}],
-    )
-    print(response.choices[0].message.content)
+    ...
 except APIStatusError as error:
     print(error.status_code)
 ```
 
 ### `ollama`
 
-**Que hace:** es el SDK de Python para usar Ollama de forma local. En el laboratorio se usa para crear un cliente con `Client()` y llamar a `client.chat()` contra modelos descargados en la maquina.
+**Que hace:** es el SDK de Python para usar Ollama de forma local. En el proyecto se usa para crear un cliente con `Client()` y llamar a `client.chat()` contra modelos descargados en la maquina.
 
-**Cuando se usa:** cuando una aplicacion Python necesita ejecutar modelos locales sin API key, comparar respuestas contra proveedores de nube o trabajar con modelos de programacion como `qwen2.5-coder:3b`.
+**Cuando se usa:** cuando una aplicacion Python necesita ejecutar modelos locales sin API key, comparar respuestas contra proveedores de nube o trabajar con modelos instalados en el equipo.
 
 **Ejemplo basico con `Client`:**
 
@@ -269,16 +247,49 @@ from ollama import Client
 
 client = Client()
 
-messages = [
-    {"role": "user", "content": "Explica en una frase que es un agente de IA."}
-]
-
 response = client.chat(
     model="gemma3:4b",
-    messages=messages,
+    messages=[{"role": "user", "content": "Hola"}],
 )
 
 print(response.message.content)
+```
+
+### `gradio`
+
+**Que hace:** permite crear interfaces web rapidas en Python para conversar, cargar datos o exponer demos locales. En el laboratorio se usa `gr.ChatInterface` para abrir una UI de chat.
+
+**Cuando se usa:** cuando se quiere probar un agente o flujo conversacional sin construir manualmente una aplicacion web completa.
+
+**Ejemplo basico con `ChatInterface`:**
+
+```python
+import gradio as gr
+
+def chat(message: str, history: list[dict[str, str]]) -> str:
+    return f"Recibido: {message}"
+
+gr.ChatInterface(fn=chat).launch()
+```
+
+### `pypdf`
+
+**Que hace:** permite leer archivos PDF desde Python. En el laboratorio se usa `PdfReader` para extraer texto de un CV y convertirlo en contexto para el agente.
+
+**Cuando se usa:** cuando un agente necesita consumir documentos locales como PDFs antes de construir el prompt o un contexto recuperable.
+
+**Ejemplo basico con `PdfReader`:**
+
+```python
+from pypdf import PdfReader
+
+reader = PdfReader("documento.pdf")
+
+text = ""
+for page in reader.pages:
+    content = page.extract_text()
+    if content:
+        text += content
 ```
 
 ### `pyright`
@@ -309,13 +320,11 @@ En este repositorio esa configuracion vive en [labs/pyrightconfig.json](/D:/Fuen
 Estos modulos no son librerias externas, pero organizan el ejemplo:
 
 - `config.gemini.config`: carga y valida `GEMINI_API_KEY`, define configuracion de generacion y codigos retryables.
-- `config.gemini.gemini_client`: crea el cliente de Gemini.
-- `config.gemini.tools`: contiene utilidades especificas de Gemini para retry, preguntas y lectura de `response.text`.
+- `config.gemini.gemini_client`: crea el cliente de Gemini, construye historial, aplica reintentos y expone `ask_chat_question`.
 - `config.openia.config`: carga y valida `OPENAI_API_KEY`, y define codigos retryables.
-- `config.openia.openai_client`: crea el cliente de OpenAI.
-- `config.openia.tools`: contiene utilidades especificas de OpenAI Chat Completions.
+- `config.openia.openai_client`: crea el cliente de OpenAI, construye historial, aplica reintentos y expone `ask_chat_question`.
 - `config.ollama.config`: carga `OLLAMA_HOST`, define modelos recomendados y codigos retryables.
-- `config.ollama.ollama_client`: crea el cliente de Ollama.
-- `config.ollama.tools`: contiene utilidades especificas de Ollama para retry, preguntas y lectura de `response.message.content`.
-- `generate_response_example`: ejecuta una consulta con `client.chat.completions.create`.
-- `chat_example`: ejecuta una conversacion con una lista `messages` y helpers por proveedor en Gemini, OpenAI y Ollama.
+- `config.ollama.ollama_client`: crea el cliente de Ollama, construye historial, aplica reintentos y expone `ask_chat_question`.
+- `config.groq.config`: carga y valida `GROQ_API_KEY`, define `GROQ_BASE_URL` y codigos retryables.
+- `config.groq.groq_client`: crea el cliente compatible con la API estilo OpenAI para Groq y expone `ask_chat_question`.
+- `config.shared.types`: define `ChatMessage`, el tipo base compartido para historial entre laboratorios.
