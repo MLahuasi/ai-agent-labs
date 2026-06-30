@@ -3,7 +3,8 @@ import json
 import gradio as gr
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast, Literal
+from gradio.components.chatbot import Message, MessageDict
 
 LABS_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(LABS_DIR))
@@ -17,6 +18,51 @@ MODEL_OPENIA_NAME = "gpt-5-nano"
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 HISTORY_FILE = DATA_DIR / "history.json"
+GREETING_MESSAGE = "Hola, soy Bilbo Bolsón. ¿En qué te puedo ayudar?"
+
+GradioRole = Literal["user", "assistant"]
+
+
+def build_initial_history(system_prompt: str) -> list[ChatMessage]:
+    history: list[ChatMessage] = [
+        {
+            "role": "system",
+            "content": system_prompt,
+        }
+    ]
+
+    if HISTORY_FILE.exists():
+        with open(HISTORY_FILE, "r", encoding="utf-8") as file:
+            persisted = json.load(file)
+
+        history.extend(
+            item
+            for item in persisted
+            if item["role"] != "system"
+        )
+
+        return history
+
+    history.append(
+        {
+            "role": "assistant",
+            "model": MODEL_OPENIA_NAME,
+            "content": GREETING_MESSAGE,
+        }
+    )
+
+    return history
+
+
+def build_chatbot_history(history: list[ChatMessage]) ->  list[MessageDict | Message]:
+    return [
+        MessageDict(
+            role=cast(GradioRole, item["role"]),
+            content=item["content"],
+        )
+        for item in history
+        if item["role"] in {"user", "assistant"}
+    ]
 
 def main() -> None:
     openia_client = create_openai_client()
@@ -57,23 +103,7 @@ def main() -> None:
         "indícalo de forma honesta y manteniendo el personaje."
     )
 
-    history: list[ChatMessage] = [
-        {
-            "role": "system",
-            "content": system_prompt,
-        }
-    ]
-
-
-    if HISTORY_FILE.exists():
-        with open(HISTORY_FILE, "r", encoding="utf-8") as file:
-            persisted = json.load(file)
-
-        history.extend(
-            item
-            for item in persisted
-            if item["role"] != "system"
-        )
+    history = build_initial_history(system_prompt)
 
     def chat(message: str, _gradio_history: list[dict[str, Any]]) -> str:
            
@@ -99,7 +129,15 @@ def main() -> None:
         return response
     
     try:
-        gr.ChatInterface(fn=chat).launch()
+        chatbot = gr.Chatbot(
+            value=build_chatbot_history(history),     
+     
+        )
+
+        gr.ChatInterface(
+            fn=chat,            
+            chatbot=chatbot,
+        ).launch()
     finally:
         if len(history) > 1:
             with open(HISTORY_FILE, "w", encoding="utf-8") as file:

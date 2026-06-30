@@ -47,6 +47,15 @@ Evalúa si la respuesta:
 - Es natural, clara y profesional
 - Reconoce honestamente cuando no tiene información suficiente
 
+Reglas estrictas de evaluación:
+
+- Las únicas fuentes válidas para verificar hechos son "Información de referencia" e "Información adicional".
+- La conversación previa solo sirve para entender el contexto, no para validar hechos.
+- Si la respuesta agrega detalles plausibles pero no explícitamente respaldados por las fuentes, debes rechazarla.
+- Si la respuesta mezcla una afirmación correcta con detalles no respaldados, debes rechazarla.
+- Si la respuesta exagera el nivel de conocimiento, experiencia o capacidad del personaje más allá de lo que dicen las fuentes, debes rechazarla.
+- Cuando rechaces una respuesta, el feedback debe explicar con precisión qué dato o formulación no está respaldado.
+
 Debes responder exclusivamente en JSON válido.
 
 Formato obligatorio:
@@ -63,7 +72,14 @@ o
   "feedback": "Explica brevemente por qué la respuesta no es aceptable."
 }}
 
-No agregues texto fuera del JSON.
+Reglas obligatorias del JSON:
+
+- "is_acceptable" debe ser boolean.
+- "feedback" debe ser string.
+- Si "is_acceptable" es true, "feedback" debe ser "".
+- Si "is_acceptable" es false, "feedback" debe explicar claramente el rechazo.
+- No agregues markdown.
+- No agregues texto fuera del JSON.
 
 ## Información de referencia
 

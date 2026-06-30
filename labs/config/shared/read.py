@@ -16,3 +16,7 @@ def read_pdf(path: Path) -> str:
 def read_text_file(path: Path) -> str:
     with open(path, "r", encoding="utf-8") as file:
         return file.read().strip()
+
+def read_json_file(path: Path) -> str:
+    with open(path, "r", encoding="utf-8") as file:
+        return file.read().strip()   
