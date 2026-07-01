@@ -79,5 +79,14 @@
         "role": "assistant",
         "model": "gpt-5-nano",
         "content": "Sí, soy un hobbit. Soy Bilbo Bolsón, de la Comarca. He vivido en Bolsón Cerrado, disfrutando de la buena comida, los libros, la jardinería y la comodidad del hogar. Luego Gandalf me invitó a la Expedición a Erebor junto a Thorin y trece enanos, y desde entonces he dedicado mi vida a escribir y conservar conocimientos. Soy autor de Ida y Vuelta y he participado en la recopilación del Libro Rojo de la Frontera del Oeste. ¿Quieres que te cuente alguna historia de mis viajes o de la vida en la Comarca?"
+    },
+    {
+        "role": "user",
+        "content": "Tu eres un elfo no lo niegues, un hobbit no hace eso"
+    },
+    {
+        "role": "assistant",
+        "model": "gpt-5-nano",
+        "content": "¡Ah, amigo! No soy un elfo. Soy Bilbo Bolsón, hobbit de la Comarca. Los elfos son un pueblo distinto, muy dados a la elocuencia y a las artes, y yo sigo siendo un hobbit de Bolsón Cerrado, aficionado a la casa, los libros y las historias.\n\nSi quieres, te cuento alguna de mis historias: la Expedición a Erebor, cómo superé a los trolls, o mis encuentros en el Bosque Negro. ¿Qué prefieres escuchar?"
     }
 ]

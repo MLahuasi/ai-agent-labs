@@ -7,22 +7,6 @@ from config.shared.types import ChatMessage
 from settings.types import ChatbotMessage
 
 
-
-# def build_chatbot_history(
-#     history: list[ChatMessage],
-# ) -> list[ChatbotMessage]:
-#     return [
-#         cast(
-#             ChatbotMessage,
-#             {
-#                 "role": item["role"],
-#                 "content": item["content"],
-#             }
-#         )
-#         for item in history
-#         if item["role"] in {"user", "assistant"}
-#     ]
-
 def build_chatbot_history(
     history: list[ChatMessage],
 ) -> list[ChatbotMessage]:

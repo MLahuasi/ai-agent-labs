@@ -6,10 +6,11 @@ LABS_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(LABS_DIR))
 
 from config.shared.types import ChatMessage
-from config.openia.openai_client import create_openai_client, ask_chat_question as ask_openai_question
-from config.gemini.gemini_client import create_gemini_client, ask_chat_question as ask_gemini_question
-from config.ollama.ollama_client import create_ollama_client, ask_chat_question as ask_ollama_question
-from config.groq.groq_client import create_groq_client, ask_chat_question as ask_groq_question
+
+from config.openia.openai_client import OpenAILlmClientAdapter
+from config.gemini.gemini_client import GeminiLlmClientAdapter
+from config.ollama.ollama_client import OllamaLlmClientAdapter
+from config.groq.groq_client import GroqLlmClientAdapter
 
 
 MODEL_OPENIA_NAME = "gpt-5-nano"
@@ -21,14 +22,17 @@ MODEL_GROQ_NAME = "llama-3.3-70b-versatile"
 
 
 def main() -> None:
-    openia_client = create_openai_client()
-    gemini_client = create_gemini_client()
-    ollama_client = create_ollama_client()
-    groq_client = create_groq_client()
+    openia_adapter = OpenAILlmClientAdapter()
+    gemini_adapter = GeminiLlmClientAdapter()
+    ollama_adapter = OllamaLlmClientAdapter()
+    groq_adapter = GroqLlmClientAdapter()
 
-    limit = (
-        "Responde en máximo 80 palabras. "
-    )
+    openia_client = openia_adapter.create_client()
+    gemini_client = gemini_adapter.create_client()
+    ollama_client = ollama_adapter.create_client()
+    groq_client = groq_adapter.create_client()
+
+    limit = "Responde en máximo 80 palabras."
 
     request = (
         "Propón una única pregunta basada en una situación realista donde una "
@@ -38,100 +42,120 @@ def main() -> None:
         "requerir conocimientos externos y poder responderse en menos de "
         "150 palabras. Responde únicamente con la pregunta."
     )
-    history: list[ChatMessage] = []
+
     answers: list[tuple[str, str]] = []
 
     print("---- GENERA PREGUNTA A OPENIA ----")
-    current_prompt = ask_openai_question(
+
+    prompt_history: list[ChatMessage] = []
+
+    current_prompt = openia_adapter.ask_chat_question(
         client=openia_client,
         model=MODEL_OPENIA_NAME,
-        messages=history,
+        messages=prompt_history,
         role="user",
         question=f"{request}\n\n{limit}",
     )
-    print(current_prompt)    
-    
-    # LLAMA LLM#1
+
+    print(current_prompt)
+
+    # LLAMA LLM #1 - OPENAI
     print("---- LLAMAR A OPENIA ----")
-    answer = ask_openai_question(
+
+    openia_history: list[ChatMessage] = []
+
+    answer = openia_adapter.ask_chat_question(
         client=openia_client,
         model=MODEL_OPENIA_NAME,
-        messages=history,
+        messages=openia_history,
         role="user",
         question=f"{current_prompt}\n\n{limit}",
     )
-    # print(answer)    
+
     answers.append((MODEL_OPENIA_NAME, answer))
 
-    # LLAMA LLM#2
+    # LLAMA LLM #2 - GEMINI
     print("---- LLAMAR A GEMINI ----")
-    answer = ask_gemini_question(
+
+    gemini_history: list[ChatMessage] = []
+
+    answer = gemini_adapter.ask_chat_question(
         client=gemini_client,
         model=MODEL_GEMINI_NAME,
-        messages=history,
+        messages=gemini_history,
         role="user",
         question=f"{current_prompt}\n\n{limit}",
     )
-    # print(answer)
+
     answers.append((MODEL_GEMINI_NAME, answer))
 
-    # LLAMA LLM#3
+    # LLAMA LLM #3 - GROQ
     print("---- LLAMAR A GROQ ----")
-    answer = ask_groq_question(
+
+    groq_history: list[ChatMessage] = []
+
+    answer = groq_adapter.ask_chat_question(
         client=groq_client,
         model=MODEL_GROQ_NAME,
-        messages=history,
+        messages=groq_history,
         role="user",
         question=f"{current_prompt}\n\n{limit}",
     )
-    # print(answer)
+
     answers.append((MODEL_GROQ_NAME, answer))
-    
-    # LLAMA LLM#4
+
+    # LLAMA LLM #4 - OLLAMA #1
     print("---- LLAMAR A OLLAMA #1 ----")
-    answer = ask_ollama_question(
+
+    ollama_history_1: list[ChatMessage] = []
+
+    answer = ollama_adapter.ask_chat_question(
         client=ollama_client,
         model=MODEL_OLLAMA_NAME_1,
-        messages=history,
+        messages=ollama_history_1,
         role="user",
         question=f"{current_prompt}\n\n{limit}",
     )
-    # print(answer)
+
     answers.append((MODEL_OLLAMA_NAME_1, answer))
 
-    # LLAMA LLM#5
+    # LLAMA LLM #5 - OLLAMA #2
     print("---- LLAMAR A OLLAMA #2 ----")
-    answer = ask_ollama_question(
+
+    ollama_history_2: list[ChatMessage] = []
+
+    answer = ollama_adapter.ask_chat_question(
         client=ollama_client,
         model=MODEL_OLLAMA_NAME_2,
-        messages=history,
+        messages=ollama_history_2,
         role="user",
         question=f"{current_prompt}\n\n{limit}",
     )
-    # print(answer)
+
     answers.append((MODEL_OLLAMA_NAME_2, answer))
 
+    # LLAMA LLM #6 - OLLAMA #3
     print("---- LLAMAR A OLLAMA #3 ----")
-    answer = ask_ollama_question(
+
+    ollama_history_3: list[ChatMessage] = []
+
+    answer = ollama_adapter.ask_chat_question(
         client=ollama_client,
         model=MODEL_OLLAMA_NAME_3,
-        messages=history,
+        messages=ollama_history_3,
         role="user",
         question=f"{current_prompt}\n\n{limit}",
     )
-    # print(answer)
+
     answers.append((MODEL_OLLAMA_NAME_3, answer))
 
-    # print("**** RESPUESTAS MODELOS *****")
-    # for model_name, model_answer in answers:
-    #     print(model_name)
-    #     print(model_answer)
+    print("**** RESPUESTAS MODELOS *****")
 
-    # History
-    print("**** HISTORIAL CHAT ORQUESTACION MULTIPLE *****")
-    print(history)
+    for model_name, model_answer in answers:
+        print("----")
+        print(model_name)
+        print(model_answer)
 
-    # Comparación entre modelos:
     together = ""
 
     for index, (model_name, answer) in enumerate(answers, start=1):
@@ -139,37 +163,40 @@ def main() -> None:
         together += f"Modelo: {model_name}\n"
         together += f"Respuesta: {answer}\n\n"
 
-    # Crear prompt para evaluar
     expected_result = list(range(1, len(answers) + 1))
+
     judge_prompt = f"""
-    Estás evaluando respuestas a una misma pregunta.
+Estás evaluando respuestas a una misma pregunta.
 
-    Pregunta:
+Pregunta:
 
-    {current_prompt}
+{current_prompt}
 
-    Evalúa cada respuesta por:
+Evalúa cada respuesta por:
 
-    - calidad del razonamiento
-    - manejo de restricciones
-    - claridad
-    - plan de acción
+- calidad del razonamiento
+- manejo de restricciones
+- claridad
+- plan de acción
 
-    Devuelve únicamente JSON:
+Devuelve únicamente JSON válido, sin markdown, sin explicación adicional.
 
-    {{"resultados": {expected_result}}}
+Formato esperado:
 
-    donde 1 es el mejor competidor.
+{{"resultados": {expected_result}}}
 
-    Respuestas:
+Donde el primer número representa al mejor competidor.
 
-    {together}
-    """    
+Respuestas:
 
-    # Llamar al juez
+{together}
+"""
+
+    print("---- LLAMAR A JUEZ OPENIA ----")
+
     judge_history: list[ChatMessage] = []
 
-    judge_result = ask_openai_question(
+    judge_result = openia_adapter.ask_chat_question(
         client=openia_client,
         model=MODEL_OPENIA_NAME,
         messages=judge_history,
@@ -179,8 +206,6 @@ def main() -> None:
 
     print(judge_result)
 
-    # Mostrar Ranking    
-
     ranking = json.loads(judge_result)
     results = ranking.get("resultados", [])
 
@@ -188,9 +213,15 @@ def main() -> None:
 
     for position, competitor_index in enumerate(results, start=1):
         index = int(competitor_index) - 1
+
+        if index < 0 or index >= len(answers):
+            print(f"Rank {position}: índice inválido {competitor_index}")
+            continue
+
         model_name = answers[index][0]
 
         print(f"Rank {position}: {model_name}")
+
 
 if __name__ == "__main__":
     main()

@@ -1,143 +1,231 @@
-import time
 import sys
+import time
 from pathlib import Path
-from typing import cast
+from typing import Any, Sequence, cast
+
+from openai import OpenAI
+from openai.types.chat import ChatCompletion, ChatCompletionMessageParam
 
 LABS_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(LABS_DIR))
 
-from config.shared.types import ChatMessage
-
-from openai import OpenAI
-
 from config.groq.config import GROQ_BASE_URL, RETRYABLE_STATUS_CODES, load_groq_api_key
-from openai.types.chat import (
-    ChatCompletion,
-    ChatCompletionMessageParam,
+from config.shared.llm_client import (
+    HandleToolCalls,
+    LlmClientAdapter,
+    ToolDefinition,
 )
+from config.shared.roles import normalize_chat_role
+from config.shared.types import ChatMessage, ChatRole
 
 
-def create_groq_client() -> OpenAI:
-    return OpenAI(
-        api_key=load_groq_api_key(),
-        base_url=GROQ_BASE_URL,
-    )
-
-def build_groq_history(
-    messages: list[ChatMessage],
-) -> list[ChatCompletionMessageParam]:
-    history: list[ChatCompletionMessageParam] = []
-
-    for message in messages:
-        role = message["role"].lower()
-
-        if role in {"model", "ia"}:
-            role = "assistant"
-
-        if role not in {
-            "developer",
-            "system",
-            "user",
-            "assistant",
-            "tool",
-            "function",
-        }:
-            role = "user"
-
-        history.append(
-            cast(
-                ChatCompletionMessageParam,
-                {
-                    "role": role,
-                    "content": message["content"],
-                },
-            )
+class GroqLlmClientAdapter(LlmClientAdapter):
+    def create_client(self) -> OpenAI:
+        return OpenAI(
+            api_key=load_groq_api_key(),
+            base_url=GROQ_BASE_URL,
         )
 
-    return history
+    def get_tool_calls(self, response: ChatCompletion) -> Any | None:
+        if not response.choices:
+            return None
 
+        message = response.choices[0].message
+        tool_calls = getattr(message, "tool_calls", None)
 
-def send_chat_message_with_retry(
-    client: OpenAI,
-    model: str,
-    history: list[ChatMessage],
-    question: str,
-    max_retries: int = 3,
-) -> ChatCompletion:
-    messages = build_groq_history(history)
-    messages.append(
-        cast(
-            ChatCompletionMessageParam,
+        if not tool_calls:
+            return None
+
+        return tool_calls
+
+    def append_assistant_tool_call_message(
+        self,
+        *,
+        messages: list[ChatMessage],
+        response: ChatCompletion,
+        model: str,
+    ) -> None:
+        if not response.choices:
+            raise ValueError("Groq no devolvió opciones de respuesta.")
+    
+        message = response.choices[0].message
+        tool_calls = message.tool_calls or []
+    
+        serializable_tool_calls: list[dict[str, Any]] = []
+    
+        for tool_call in tool_calls:
+            if hasattr(tool_call, "model_dump"):
+                serializable_tool_calls.append(
+                    tool_call.model_dump(exclude_none=True)
+                )
+            else:
+                serializable_tool_calls.append(cast(dict[str, Any], tool_call))
+    
+        messages.append(
             {
-                "role": "user",
-                "content": question,
-            },
+                "role": "assistant",
+                "model": model,
+                "content": message.content,
+                "tool_calls": serializable_tool_calls,
+            }
         )
-    )
 
-    for attempt in range(1, max_retries + 1):
-        try:
-            return client.chat.completions.create(
+    def build_history(
+        self,
+        messages: list[ChatMessage],
+    ) -> list[ChatCompletionMessageParam]:
+        history: list[ChatCompletionMessageParam] = []
+
+        for message in messages:
+            role = normalize_chat_role(message["role"])
+
+            payload: dict[str, Any] = {
+                "role": role,
+                "content": message.get("content"),
+            }
+
+            if role == "tool":
+                tool_call_id = message.get("tool_call_id")
+
+                if tool_call_id is None:
+                    raise ValueError("El mensaje con role='tool' no tiene tool_call_id.")
+
+                payload["tool_call_id"] = tool_call_id
+
+            if role == "assistant" and "tool_calls" in message:
+                payload["tool_calls"] = message["tool_calls"]
+
+            history.append(cast(ChatCompletionMessageParam, payload))
+
+        return history
+
+    def send_chat_message_with_retry(
+        self,
+        *,
+        client: OpenAI,
+        model: str,
+        history: list[ChatMessage],
+        question: str | None = None,
+        tools: Sequence[ToolDefinition] | None = None,
+        max_retries: int = 3,
+    ) -> ChatCompletion:
+        messages = self.build_history(history)
+
+        if question is not None:
+            messages.append(
+                cast(
+                    ChatCompletionMessageParam,
+                    {
+                        "role": "user",
+                        "content": question,
+                    },
+                )
+            )
+
+        for attempt in range(1, max_retries + 1):
+            try:
+                if tools is None:
+                    return client.chat.completions.create(
+                        model=model,
+                        messages=messages,
+                    )
+
+                return client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    tools=cast(Any, tools),
+                )
+
+            except Exception as error:
+                status_code = getattr(error, "status_code", None)
+
+                if status_code not in RETRYABLE_STATUS_CODES:
+                    raise
+
+                if attempt == max_retries:
+                    raise RuntimeError(
+                        f"Groq no respondió después de {max_retries} intentos. "
+                        f"Último error: {status_code}"
+                    ) from error
+
+                wait_seconds = 2**attempt
+                print(
+                    f"Groq ocupado o con error temporal [{status_code}]. "
+                    f"Reintentando en {wait_seconds}s..."
+                )
+                time.sleep(wait_seconds)
+
+        raise RuntimeError("No se pudo completar la consulta a Groq.")
+
+    def get_response_text(self, response: ChatCompletion) -> str:
+        if not response.choices:
+            raise ValueError("Groq no devolvió opciones de respuesta.")
+
+        text = response.choices[0].message.content
+
+        if text is None:
+            raise ValueError("Groq no devolvió contenido de texto.")
+
+        text = text.strip()
+
+        if not text:
+            raise ValueError("Groq devolvió una respuesta vacía.")
+
+        return text
+
+    def ask_chat_question(
+        self,
+        *,
+        client: OpenAI,
+        model: str,
+        messages: list[ChatMessage],
+        role: ChatRole,
+        question: str,
+        tools: Sequence[ToolDefinition] | None = None,
+        handle_tool_calls: HandleToolCalls | None = None,
+        max_tool_iterations: int = 5,
+    ) -> str:
+        messages.append({"role": role, "content": question})
+
+        for _ in range(max_tool_iterations):
+            response = self.send_chat_message_with_retry(
+                client=client,
                 model=model,
-                messages=messages,
+                history=messages,
+                question=None,
+                tools=tools,
             )
 
-        except Exception as error:
-            status_code = getattr(error, "status_code", None)
+            tool_calls = self.get_tool_calls(response)
 
-            if status_code not in RETRYABLE_STATUS_CODES:
-                raise
+            if not tool_calls:
+                answer = self.get_response_text(response)
 
-            if attempt == max_retries:
+                messages.append(
+                    {
+                        "role": "assistant",
+                        "model": model,
+                        "content": answer,
+                    }
+                )
+
+                return answer
+
+            if handle_tool_calls is None:
                 raise RuntimeError(
-                    f"Groq no respondio despues de {max_retries} intentos. "
-                    f"Ultimo error: {status_code}"
-                ) from error
+                    "El modelo solicitó tool calls, pero no se proporcionó "
+                    "handle_tool_calls."
+                )
 
-            wait_seconds = 2 ** attempt
-            print(
-                f"Groq ocupado o con error temporal [{status_code}]. "
-                f"Reintentando en {wait_seconds}s..."
+            self.append_assistant_tool_call_message(
+                messages=messages,
+                response=response,
+                model=model,
             )
-            time.sleep(wait_seconds)
 
-    raise RuntimeError("No se pudo completar la consulta a Groq.")
+            tool_results = handle_tool_calls(tool_calls)
+            messages.extend(tool_results)
 
-
-def get_response_text(response: ChatCompletion) -> str:
-    if not response.choices:
-        raise ValueError("Groq no devolvio opciones de respuesta.")
-
-    text = response.choices[0].message.content
-
-    if text is None:
-        raise ValueError("Groq no devolvio contenido de texto.")
-
-    text = text.strip()
-
-    if not text:
-        raise ValueError("Groq devolvio una respuesta vacia.")
-
-    return text
-
-
-def ask_chat_question(
-    client: OpenAI,
-    model: str,
-    messages: list[ChatMessage],
-    role: str,
-    question: str,
-) -> str:
-    response = send_chat_message_with_retry(
-        client=client,
-        model=model,
-        history=messages,
-        question=question,
-    )
-
-    answer = get_response_text(response)
-
-    messages.append({"role": role, "content": question})
-    messages.append({"role": "assistant", "model": model, "content": answer})
-
-    return answer
+        raise RuntimeError(
+            f"Se alcanzó el límite de {max_tool_iterations} iteraciones de tools."
+        )

@@ -13,8 +13,8 @@ sys.path.insert(0, str(LABS_DIR))
 
 from config.shared.read import read_pdf, read_text_file
 from config.shared.types import ChatMessage
-from config.openia.openai_client import create_openai_client, ask_chat_question as ask_openai_question
-from config.gemini.gemini_client import create_gemini_client, ask_chat_question as ask_gemini_question
+from config.openia.openai_client import OpenAILlmClientAdapter
+from config.gemini.gemini_client import GeminiLlmClientAdapter
 from prompts.main import build_system_prompt, build_evaluator_prompt
 
 
@@ -28,18 +28,18 @@ GREETING_MESSAGE = "Hola, soy Bilbo Bolsón. ¿En qué te puedo ayudar?"
 
 GradioRole = Literal["user", "assistant"]
 
+
 class Evaluation(BaseModel):
     is_acceptable: bool = Field(
         description="Indica si la respuesta del agente es aceptable."
     )
     feedback: str = Field(
         default="",
-        description="Explica el rechazo cuando is_acceptable es false."
+        description="Explica el rechazo cuando is_acceptable es false.",
     )
 
     @model_validator(mode="after")
     def validate_feedback_consistency(self) -> Self:
-        
         self.feedback = self.feedback.strip()
 
         if self.is_acceptable and self.feedback:
@@ -54,6 +54,7 @@ class Evaluation(BaseModel):
 
         return self
 
+
 def clean_json_response(raw_response: str) -> str:
     return (
         raw_response
@@ -63,6 +64,7 @@ def clean_json_response(raw_response: str) -> str:
         .removesuffix("```")
         .strip()
     )
+
 
 def load_history(system_prompt: str) -> list[ChatMessage]:
     if not HISTORY_FILE.exists():
@@ -77,9 +79,9 @@ def load_history(system_prompt: str) -> list[ChatMessage]:
                 "content": GREETING_MESSAGE,
             },
         ]
-        
+
     with open(HISTORY_FILE, "r", encoding="utf-8") as file:
-        persisted = json.load(file)
+        persisted: list[ChatMessage] = json.load(file)
 
     has_system_prompt = any(
         item.get("role") == "system"
@@ -98,15 +100,28 @@ def load_history(system_prompt: str) -> list[ChatMessage]:
     ]
 
 
-def build_chatbot_history(history: list[ChatMessage]) ->  list[MessageDict | Message]:
-    return [
-        MessageDict(
-            role=cast(GradioRole, item["role"]),
-            content=item["content"],
+def build_chatbot_history(
+    history: list[ChatMessage],
+) -> list[MessageDict | Message]:
+    chatbot_history: list[MessageDict | Message] = []
+
+    for item in history:
+        role = item.get("role")
+
+        if role not in {"user", "assistant"}:
+            continue
+
+        content = item.get("content") or ""
+
+        chatbot_history.append(
+            MessageDict(
+                role=cast(GradioRole, role),
+                content=content,
+            )
         )
-        for item in history
-        if item["role"] in {"user", "assistant"}
-    ]
+
+    return chatbot_history
+
 
 def save_history(history: list[ChatMessage]) -> None:
     DATA_DIR.mkdir(exist_ok=True)
@@ -120,16 +135,16 @@ def save_history(history: list[ChatMessage]) -> None:
         )
 
 
-def evaluate_response(    
+def evaluate_response(
+    *,
+    gemini_adapter: GeminiLlmClientAdapter,
+    gemini_client: Any,
     model: str,
     evaluator_prompt: str,
     reply: str,
     message: str,
     history: list[ChatMessage],
 ) -> Evaluation:
-    
-    client = create_gemini_client()
-
     conversation_context = [
         item
         for item in history[:-2]
@@ -162,8 +177,8 @@ Aquí está la última respuesta del agente:
 Evalúa si la respuesta es aceptable.
 """.strip()
 
-    raw_response = ask_gemini_question(
-        client=client,
+    raw_response = gemini_adapter.ask_chat_question(
+        client=gemini_client,
         model=model,
         messages=evaluation_history,
         role="user",
@@ -188,7 +203,9 @@ Evalúa si la respuesta es aceptable.
 
 
 def rerun_response(
-    client: Any,
+    *,
+    openia_adapter: OpenAILlmClientAdapter,
+    openia_client: Any,
     model: str,
     system_prompt: str,
     history: list[ChatMessage],
@@ -197,25 +214,25 @@ def rerun_response(
     feedback: str,
 ) -> str:
     retry_system_prompt = f"""
-{system_prompt}
+    {system_prompt}
 
-## Respuesta anterior rechazada
+    ## Respuesta anterior rechazada
 
-Acabas de responder, pero el control de calidad rechazó tu respuesta.
+    Acabas de responder, pero el control de calidad rechazó tu respuesta.
 
-## Respuesta rechazada
+    ## Respuesta rechazada
 
-{previous_reply}
+    {previous_reply}
 
-## Motivo del rechazo
+    ## Motivo del rechazo
 
-{feedback}
+    {feedback}
 
-Responde nuevamente corrigiendo el problema.
-Mantén el personaje y respeta estrictamente la información disponible.
-No inventes datos.
-Si no tienes información suficiente, dilo honestamente.
-""".strip()
+    Responde nuevamente corrigiendo el problema.
+    Mantén el personaje y respeta estrictamente la información disponible.
+    No inventes datos.
+    Si no tienes información suficiente, dilo honestamente.
+    """.strip()
 
     retry_history: list[ChatMessage] = [
         {
@@ -224,14 +241,29 @@ Si no tienes información suficiente, dilo honestamente.
         }
     ]
 
-    retry_history.extend(
-        item
-        for item in history[:-2]
-        if item.get("role") in {"user", "assistant"}
-    )
+    for item in history[:-2]:
+        role = item.get("role")
+    
+        if role not in {"user", "assistant"}:
+            continue
+        
+        if "tool_calls" in item:
+            continue
+        
+        content = item.get("content")
+    
+        if not content:
+            continue
+        
+        retry_history.append(
+            {
+                "role": role,
+                "content": content,
+            }
+        )
 
-    return ask_openai_question(
-        client=client,
+    return openia_adapter.ask_chat_question(
+        client=openia_client,
         model=model,
         messages=retry_history,
         role="user",
@@ -240,7 +272,11 @@ Si no tienes información suficiente, dilo honestamente.
 
 
 def main() -> None:
-    openia_client = create_openai_client()
+    openia_adapter = OpenAILlmClientAdapter()
+    gemini_adapter = GeminiLlmClientAdapter()
+
+    openia_client = openia_adapter.create_client()
+    gemini_client = gemini_adapter.create_client()
 
     name = "Bilbo Bolsón"
 
@@ -263,15 +299,20 @@ def main() -> None:
 
     def chat(message: str, _gradio_history: list[dict[str, Any]]) -> str:
         print("Se pregunta a OpenIA...")
-        reply = ask_openai_question(
+
+        reply = openia_adapter.ask_chat_question(
             client=openia_client,
             model=MODEL_OPENIA_NAME,
             messages=history,
             role="user",
             question=message,
         )
-        print("Evalua Gemini...")
-        evaluation = evaluate_response(            
+
+        print("Evalúa Gemini...")
+
+        evaluation = evaluate_response(
+            gemini_adapter=gemini_adapter,
+            gemini_client=gemini_client,
             model=MODEL_GEMINI_NAME,
             evaluator_prompt=evaluator_prompt,
             reply=reply,
@@ -287,15 +328,16 @@ def main() -> None:
             print("Reintentando respuesta con OpenAI...")
 
             reply = rerun_response(
-                    client=openia_client,
-                    model=MODEL_OPENIA_NAME,
-                    system_prompt=system_prompt,
-                    history=history,
-                    message=message,
-                    previous_reply=reply,
-                    feedback=evaluation.feedback,
-                )
-  
+                openia_adapter=openia_adapter,
+                openia_client=openia_client,
+                model=MODEL_OPENIA_NAME,
+                system_prompt=system_prompt,
+                history=history,
+                message=message,
+                previous_reply=reply,
+                feedback=evaluation.feedback,
+            )
+
             history[-1] = {
                 "role": "assistant",
                 "model": MODEL_OPENIA_NAME,
@@ -308,11 +350,11 @@ def main() -> None:
 
     try:
         chatbot = gr.Chatbot(
-            value=build_chatbot_history(history),            
+            value=build_chatbot_history(history),
         )
 
         gr.ChatInterface(
-            fn=chat,            
+            fn=chat,
             chatbot=chatbot,
         ).launch()
 
