@@ -18,7 +18,7 @@ from tools.chat import chat
 
 from config.openia.openai_client import OpenAILlmClientAdapter
 
-from agent_tools.schemas import TOOLS
+from agent_tools.schemas import build_tools
 from agent_tools.registry import AVAILABLE_TOOLS
 from tools.tool_calls import create_handle_tool_calls
 
@@ -37,6 +37,7 @@ def main() -> None:
     handle_tool_calls = create_handle_tool_calls(AVAILABLE_TOOLS)
 
     name = "Mauricio Lahuasi"
+    tools = build_tools(name)
 
     print(DATA_DIR)
 
@@ -93,7 +94,7 @@ def main() -> None:
                 history_file=HISTORY_FILE,
                 message=message,
                 _gradio_history=gradio_history,
-                tools=TOOLS,
+                tools=tools,
                 handle_tool_calls=handle_tool_calls,
             )
 

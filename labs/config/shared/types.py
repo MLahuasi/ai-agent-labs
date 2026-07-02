@@ -10,12 +10,12 @@ ChatRole = Literal[
 
 
 class ChatMessage(TypedDict):
-    role: ChatRole
-    content: str | None
+    role: str
+    content: NotRequired[str | None]
     model: NotRequired[str]
-    tool_call_id: NotRequired[str]
-    tool_calls: NotRequired[Any]
     name: NotRequired[str]
+    tool_call_id: NotRequired[str]
+    tool_calls: NotRequired[list[dict[str, Any]]]
 
 
 class ChatResponse(TypedDict):

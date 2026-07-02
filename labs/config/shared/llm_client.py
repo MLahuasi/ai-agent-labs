@@ -1,6 +1,6 @@
 from typing import Any, Callable, Protocol, Sequence
 
-from config.shared.types import ChatMessage, ChatRole
+from config.shared.types import ChatRole, ChatMessage
 
 
 ToolDefinition = dict[str, Any]

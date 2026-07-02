@@ -65,28 +65,63 @@ class OpenAILlmClientAdapter(LlmClientAdapter):
         messages: list[ChatMessage],
     ) -> list[ChatCompletionMessageParam]:
         history: list[ChatCompletionMessageParam] = []
-
+    
+        pending_tool_call_ids: list[str] = []
+    
         for message in messages:
             role = normalize_chat_role(message["role"])
-
+    
+            if pending_tool_call_ids and role != "tool":
+                raise ValueError(
+                    "Historial inválido: un mensaje assistant con tool_calls debe "
+                    "estar seguido inmediatamente por mensajes role='tool'. "
+                    f"Tool calls pendientes: {pending_tool_call_ids}"
+                )
+    
             payload: dict[str, Any] = {
                 "role": role,
                 "content": message.get("content"),
             }
-
+    
             if role == "tool":
-               tool_call_id = message.get("tool_call_id")
-            
-               if tool_call_id is None:
-                   raise ValueError("El mensaje con role='tool' no tiene tool_call_id.")
-            
-               payload["tool_call_id"] = tool_call_id
-
-            if role == "assistant" and "tool_calls" in message:
-                payload["tool_calls"] = message["tool_calls"]
-
+                tool_call_id = message.get("tool_call_id")
+    
+                if tool_call_id is None:
+                    raise ValueError("El mensaje con role='tool' no tiene tool_call_id.")
+    
+                payload["tool_call_id"] = tool_call_id
+    
+                if tool_call_id in pending_tool_call_ids:
+                    pending_tool_call_ids.remove(tool_call_id)
+    
+            if role == "assistant":
+                tool_calls = message.get("tool_calls")
+    
+                if tool_calls:
+                    payload["tool_calls"] = tool_calls
+    
+                    pending_tool_call_ids = []
+    
+                    for tool_call in tool_calls:
+                        tool_call_id = tool_call.get("id")
+    
+                        if isinstance(tool_call_id, str):
+                            pending_tool_call_ids.append(tool_call_id)
+    
+                    if not pending_tool_call_ids:
+                        raise ValueError(
+                            "El mensaje assistant tiene tool_calls, pero no se pudieron "
+                            "obtener sus ids."
+                        )
+    
             history.append(cast(ChatCompletionMessageParam, payload))
-
+    
+        if pending_tool_call_ids:
+            raise ValueError(
+                "Historial inválido: quedaron tool_calls sin respuesta tool. "
+                f"Tool calls pendientes: {pending_tool_call_ids}"
+            )
+    
         return history
 
     def send_chat_message_with_retry(

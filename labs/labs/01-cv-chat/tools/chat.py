@@ -9,11 +9,79 @@ from tools.history import save_history
 
 
 def last_response_used_tool(history: list[ChatMessage]) -> bool:
-    recent_messages = history[-4:]
+    recent_messages = history[-6:]
 
     return any(
-        item.get("role") == "tool" or "tool_calls" in item
+        item.get("role") == "tool" or bool(item.get("tool_calls"))
         for item in recent_messages
+    )
+
+
+def remove_last_tool_interaction(
+    history: list[ChatMessage],
+) -> None:
+    """
+    Elimina del historial la interacción técnica de tools generada en el último turno.
+
+    Conserva el mensaje user y la respuesta final visible del assistant.
+    Elimina:
+    - assistant con tool_calls;
+    - tool messages;
+    - assistant con content=None.
+    """
+    if not history:
+        return
+
+    cleaned: list[ChatMessage] = []
+
+    for item in history:
+        role = item.get("role")
+
+        if role == "tool":
+            continue
+
+        if role == "assistant" and item.get("tool_calls"):
+            continue
+
+        content = item.get("content")
+
+        if role == "assistant" and content is None:
+            continue
+
+        cleaned.append(item)
+
+    history.clear()
+    history.extend(cleaned)
+
+
+def replace_last_assistant_message(
+    history: list[ChatMessage],
+    *,
+    model: str,
+    reply: str,
+) -> None:
+    """
+    Reemplaza la última respuesta visible del assistant.
+
+    Si no existe una respuesta assistant textual al final, la agrega.
+    """
+    for index in range(len(history) - 1, -1, -1):
+        item = history[index]
+
+        if item.get("role") == "assistant" and not item.get("tool_calls"):
+            history[index] = {
+                "role": "assistant",
+                "model": model,
+                "content": reply,
+            }
+            return
+
+    history.append(
+        {
+            "role": "assistant",
+            "model": model,
+            "content": reply,
+        }
     )
 
 
@@ -43,11 +111,15 @@ def chat(
 
     if last_response_used_tool(history):
         print("Respuesta generada después de ejecutar tool. Se omite evaluación.")
+
+        remove_last_tool_interaction(history)
+
         save_history(
             history=history,
             data_dir=data_dir,
             history_file=history_file,
         )
+
         return reply
 
     evaluation = evaluate_response(
@@ -83,11 +155,11 @@ def chat(
             feedback=evaluation.feedback,
         )
 
-        history[-1] = {
-            "role": "assistant",
-            "model": model,
-            "content": reply,
-        }
+        replace_last_assistant_message(
+            history=history,
+            model=model,
+            reply=reply,
+        )
 
     save_history(
         history=history,

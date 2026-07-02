@@ -15,7 +15,7 @@ def build_chatbot_history(
             ChatbotMessage,
             {
                 "role": item["role"],
-                "content": item["content"],
+                "content": item.get("content"),
             },
         )
         for item in history
