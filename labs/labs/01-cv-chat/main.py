@@ -19,8 +19,8 @@ from tools.chat import chat
 from config.openia.openai_client import OpenAILlmClientAdapter
 
 from agent_tools.schemas import build_tools
-from agent_tools.registry import AVAILABLE_TOOLS
-from tools.tool_calls import create_handle_tool_calls
+from agent_tools.tool_calls import AVAILABLE_TOOLS, create_handle_tool_calls
+
 
 
 MODEL_OPENIA_NAME = "gpt-5-nano"

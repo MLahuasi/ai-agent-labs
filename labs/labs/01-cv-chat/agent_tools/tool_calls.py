@@ -1,7 +1,22 @@
 import json
-from typing import Any, cast
+from typing import Any, cast, Callable
 
 from config.shared.types import ChatMessage
+from agent_tools.functions import (
+    record_unknown_question,
+    record_user_details,
+    send_email_to_admin,
+)
+
+
+ToolFunction = Callable[..., dict[str, str]]
+
+
+AVAILABLE_TOOLS: dict[str, ToolFunction] = {
+    "record_user_details": record_user_details,
+    "record_unknown_question": record_unknown_question,
+    "send_email_to_admin": send_email_to_admin,
+}
 
 
 def create_handle_tool_calls(tool_registry: dict[str, Any]):

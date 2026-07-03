@@ -10,7 +10,7 @@
     },
     {
         "role": "user",
-        "content": "Cual es tu bicicleta favorita?"
+        "content": "de que raza es tu gato?"
     },
     {
         "role": "assistant",
@@ -19,66 +19,30 @@
     },
     {
         "role": "user",
-        "content": "Cual es tu fortaleza mas importante?"
+        "content": "Dime cual es la tecnología que mas dominas?"
     },
     {
         "role": "assistant",
         "model": "gpt-5-nano",
-        "content": "Mi fortaleza más importante es la capacidad de analizar en profundidad problemas complejos en sistemas empresariales e integraciones, para luego proponer soluciones simples, mantenibles y de alto impacto. Combino un enfoque analítico con principios de arquitectura de software (Clean Architecture, SOLID, diseño modular), pruebas y calidad. También destacaría la claridad en la comunicación, el liderazgo técnico y la responsabilidad profesional, que me permiten coordinar entregables con equipos multidisciplinarios y asegurar continuidad operativa. Además, tengo una constante actitud de aprendizaje que me ayuda a evolucionar junto a las tecnologías y contextos en los que trabajo."
+        "content": "Las dos tecnologías que más domino y que forman parte de mi stack principal son .NET (C#, ASP.NET Core) y Node.js con TypeScript. En mi trayectoria he trabajado mucho con .NET para sistemas empresariales y servicios críticos, y también he desarrollado APIs y soluciones backend modulares con Node.js y TypeScript. Hay evidencia pública de mi trabajo en proyectos como jmlq-ecosystem y jmlq-auth, entre otros. Puedo integrarme a proyectos que usen cualquiera de estas tecnologías y aplicar buenas prácticas de arquitectura, mantenibilidad y pruebas."
     },
     {
         "role": "user",
-        "content": "Cual es la tecnología que mas dominas?"
+        "content": "Cuales son tus hobbies?"
     },
     {
         "role": "assistant",
         "model": "gpt-5-nano",
-        "content": "Las tecnologías que más domino forman parte de mi stack y de mi experiencia profesional son .NET (C#, ASP.NET Core) y Node.js con TypeScript. He trabajado intensamente en backend, APIs REST, integración de sistemas y modernización de software usando estas herramientas, siempre buscando soluciones simples, mantenibles y bien estructuradas.\n\nTambién tengo experiencia relevante con React para frontend y con bases de datos como SQL Server, PostgreSQL y MongoDB. Estas tecnologías me permiten diseñar sistemas escalables y observables siguiendo principios como Clean Architecture y SOLID."
+        "content": "Mis hobbies se pueden agrupar en tres áreas: música, deporte y entretenimiento.\n\n- Música: toco la guitarra de forma autodidacta, me gusta cantar y formo parte de un coro; sigo aprendiendo lectura musical y teoría.\n- Deporte: practico running con regularidad, entrenamiento funcional y tengo interés en Tai Chi para mejorar equilibrio y concentración.\n- Entretenimiento: series y películas, especialmente de fantasía épica y ciencia ficción.\n\nSon actividades que me ayudan a mantener equilibrio, concentración y aprendizaje continuo."
     },
     {
         "role": "user",
-        "content": "Cual es tu experiencia con Cobol?"
+        "content": "eres experto en maven?"
     },
     {
         "role": "assistant",
         "model": "gpt-5-nano",
-        "content": "Mi experiencia con Cobol está ligada a proyectos de migración de sistemas legados. En el Proyecto Sistema de Catastros – Municipio de Quito participé en la migración de AS400/COBOL hacia ASP.NET y SQL Server, con foco en modernización, integración y trazabilidad. Esa experiencia me dio una buena comprensión de estructuras de datos heredadas y de los retos de transición hacia arquitecturas modernas sin interrumpir operaciones. Fuera de ese contexto, Cobol aparece principalmente como parte de ese proyecto de migración, no como una tecnología que haya utilizado de forma independiente en otros contextos."
-    },
-    {
-        "role": "user",
-        "content": "Cual es tu experiencia en Cloud?"
-    },
-    {
-        "role": "assistant",
-        "model": "gpt-5-nano",
-        "content": "No tengo evidencia pública directa de experiencia específica en plataformas de Cloud (AWS, Azure o GCP). Sin embargo, sí tengo conocimiento y competencia técnica en prácticas de DevOps y despliegue moderno que son relevantes para entornos de nube. He trabajado con Docker para contenerización, GitHub Actions para CI/CD y diseño orientado a despliegue automatizado, lo que me permite adaptar soluciones para la nube y aprovechar conceptos como observabilidad, pipelines y continuidad operativa. Con eso, puedo integrarme a equipos que usen Cloud y aplicar buenas prácticas de arquitectura y mantenimiento en ese contexto. Es una área que puedo ampliar rápidamente según el proyecto y el contexto."
-    },
-    {
-        "role": "user",
-        "content": "Cuéntame acerca de tu experiencia con React.js?"
-    },
-    {
-        "role": "assistant",
-        "model": "gpt-5-nano",
-        "content": "React.js forma parte de mi stack y de mi experiencia profesional, y lo he utilizado en varios proyectos frontend dentro de un enfoque full-stack.\n\nProyectos públicos en GitHub que evidencian mi experiencia con React:\n- frontendmentor-huddle-landing-page: Landing page responsive desarrollada con React, TypeScript y Vite. Arquitectura basada en componentes, diseño responsive y enfoque mobile-first.\n- fm_lab3_landingpage: Proyecto frontend con React, TypeScript y Vite. Configuración mínima de React en Vite y enfoques prácticos de desarrollo.\n\nEn estos proyectos aplico buenas prácticas como la/componentización, tipado fuerte con TypeScript y diseño responsive, manteniendo una base de código limpia y mantenible. Además, aunque me esfuerzo más en el backend, tengo la experiencia necesaria para colaborar en equipos que trabajen con React y puedo ampliar a Next.js cuando el proyecto lo requiera."
-    },
-    {
-        "role": "user",
-        "content": "Has desarrollado app móviles?"
-    },
-    {
-        "role": "assistant",
-        "model": "gpt-5-nano",
-        "content": "React Native forma parte de mi stack y de mi competencia técnica. En mi experiencia y proyectos públicos se ve más trabajo en backend y en desarrollo web con React para frontend; no tengo evidencia de apps móviles publicadas específicamente. Aun así, tengo conocimiento y capacidad para colaborar en proyectos móviles con React Native y aplicar mis enfoques de arquitectura, modularidad y pruebas. Puedo integrarme a equipos que usen esa tecnología y adaptar las buenas prácticas de mantenibilidad y observabilidad al contexto móvil."
-    },
-    {
-        "role": "user",
-        "content": "Detalla todas las tecnologías con manejas"
-    },
-    {
-        "role": "assistant",
-        "model": "gpt-5-nano",
-        "content": "A continuación detallo las tecnologías que manejo, indicando el nivel de respaldo en mi historial (proyectos públicos, experiencia o competencias):\n\nBackend\n- C#: Proyecto declarado (utilizo .NET Framework y .NET Core / ASP.NET Core en proyectos empresariales; migración de sistemas legados y backend moderno).\n- .NET Framework / .NET Core / ASP.NET Core / ASP.NET MVC / Web API: Proyecto declarado.\n- ASP.NET MVC: Proyecto declarado.\n- REST APIs: Proyecto declarado.\n- SOAP: Proyecto declarado.\n- LINQ: Proyecto declarado.\n- Node.js: Proyecto público.\n- TypeScript: Proyecto público.\n- Express.js: Proyecto público.\n- NestJS: Competencia técnica (conocido a nivel de stack, con ejemplos en proyectos y documentación).\n- Entity Framework / EF Core: Proyecto declarado.\n- TypeORM: Proyecto público.\n- MySQL: Competencia técnica.\n- PostgreSQL: Proyecto público.\n- SQL Server: Proyecto declarado.\n- MongoDB: Proyecto público.\n- Oracle Database: Competencia técnica.\n- JWT / JOSE / bcryptjs: Proyecto público.\n- RBAC: Proyecto público.\n- Redis (no aparece explícitamente en mis listados; no lo incluyo para evitar afirmar algo no documentado).\n\nFrontend\n- React.js: Proyecto público.\n- Next.js: Competencia técnica (con conocimiento para integrarme a proyectos que lo utilicen).\n- React Native: Competencia técnica (contribuyo y puedo trabajar en proyectos móviles; no hay publicaciones móviles específicas que lo demuestren).\n- JavaScript / HTML / CSS: Competencia técnica (parte de mi stack frontend).\n- Tailwind CSS: Proyecto público.\n- Vite: Proyecto público (en proyectos frontend que lo usan).\n\nArquitectura y diseño\n- Clean Architecture: Competencia técnica / parte de mi stack.\n- Arquitectura Hexagonal: Competencia técnica.\n- SOLID: Competencia técnica.\n- Clean Code / DDD / CQRS / Patrones de diseño / Diseño modular / Mantenibilidad: Competencia técnica (principios y prácticas en mi enfoque de desarrollo).\n\nBases de datos y persistencia\n- SQL Server: Proyecto declarado.\n- PostgreSQL: Proyecto público.\n- MongoDB: Proyecto público.\n- MySQL: Competencia técnica.\n- Oracle Database: Competencia técnica.\n- Entity Framework / EF Core: Proyecto declarado.\n- TypeORM: Proyecto público.\n\nDevOps, herramientas y calidad\n- Docker: Proyecto público.\n- Docker Hub: Proyecto público.\n- Git: Proyecto público.\n- GitHub: Proyecto público.\n- GitHub Actions: Proyecto público.\n- CI/CD: Competencia técnica.\n- Swagger: Proyecto público.\n- Jest: Proyecto público.\n- xUnit: Competencia técnica.\n- Moq: Competencia técnica.\n- Visual Studio: Competencia técnica.\n- Visual Studio Code: Competencia técnica.\n\nSeguridad, autenticación y autorización\n- JWT / Refresh tokens / Rotación de tokens: Proyecto público.\n- JOSE: Proyecto público.\n- bcryptjs: Proyecto público.\n\nObservabilidad, logging y trazabilidad\n- Observabilidad y trazabilidad: Competencia técnica.\n- jmlq-logger / jmlq-logger-plugin-* (FS, Mongo, PostgreSQL): Proyecto público.\n- PII-by-design: Competencia técnica.\n\nMensajería, correo y automatización\n- SMTP: Proyecto público.\n- Nodemailer: Proyecto público.\n- jmlq-mailer: Proyecto público.\n- Cron / scheduling (jmlq-cron): Proyecto público.\n\nPruebas y calidad\n- Jest: Proyecto público.\n- xUnit / Moq: Competencia técnica.\n\nLenguajes y herramientas de IA\n- Python: Proyecto público (ai-agent-labs).\n- OpenAI Agent SDK / CrewAI / LangGraph / AutoGen / MCP: Proyecto público (ai-agent-labs).\n- Markdown: Proyecto público (documentación y handbooks).\n- Open Source / documentación técnica: Proyecto público (varios repos).\n\nDocumentación y temas diversos\n- Markdown (documentación técnica y cheatsheets): Proyecto público.\n- Tailwind CSS (aprendizaje y prácticas): Proyecto público.\n\nCloud y despliegue\n- Cloud: Competencia técnica (conocimiento y enfoque en despliegue/operaciones; no hay evidencia de un proyecto público específico en una nube concreta).\n\nSi quieres, puedo enfocarme en un stack específico para preparar una propuesta o revisar cómo podría encajar en un proyecto concreto."
+        "content": "No. Maven no es una tecnología de la que haya mostrado experiencia documentada en mi perfil. Mi stack principal está en .NET (C# y ASP.NET Core) y Node.js con TypeScript, además de React, y bases de datos como SQL Server, PostgreSQL y MongoDB. Aunque no tengo evidencia pública de haber trabajado con Maven, tengo un enfoque de aprendizaje continuo y experiencia en CI/CD, contenedorización con Docker y buenas prácticas de arquitectura que facilitan incorporar herramientas nuevas. Si un proyecto lo requiere, puedo integrarme y aplicar prácticas de construcción e integración de forma eficiente."
     },
     {
         "role": "user",
@@ -87,11 +51,11 @@
     {
         "role": "assistant",
         "model": "gpt-5-nano",
-        "content": "Puedes contactarme por estos canales:\n\n- LinkedIn: https://linkedin.com/in/josé-mauricio-lahuasi-quillupangui-1b660874\n- GitHub: https://github.com/MLahuasi\n- Correo electrónico: jmlahuasiq@gmail.com (también puedo recibir en jmlahuasiq@hotmail.com)\n\nEs una forma rápida y directa para coordinar. Si prefieres que te contacte directamente, puedes dejarme tu nombre, correo y el motivo de contacto y te responderé para coordinar."
+        "content": "Puedes contactarme por estos canales:\n\n- LinkedIn: https://linkedin.com/in/josé-mauricio-lahuasi-quillupangui-1b660874\n- GitHub: https://github.com/MLahuasi\n- Correo electrónico: jmlahuasiq@gmail.com (también aparece jmlahuasiq@hotmail.com en algunas referencias)\n\nSi prefieres que te contacte directamente, deja tu nombre, correo y el motivo de contacto y me pondré en contacto contigo."
     },
     {
         "role": "user",
-        "content": "Me llamo Mauricio lahuasi, mi correo es jmlahuasiq@hotmail.com, quiero saber mas acerca de tus habilidades en ReactNative, Costo de tu servicio y disponibilidad de tiempo"
+        "content": "Me llamo Graciela Lahuasi, mi correo es chelal70@hotmail.com, quiero averiguar que servicios ofreces"
     },
     {
         "role": "assistant",

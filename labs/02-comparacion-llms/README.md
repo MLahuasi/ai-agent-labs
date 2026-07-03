@@ -1,4 +1,41 @@
-# Resultados
+## 🧠 Orquestando LLMs
+
+Este laboratorio demuestra cómo coordinar múltiples modelos de lenguaje dentro de un mismo flujo de ejecución. A partir de una pregunta base, la aplicación invoca diferentes LLMs, recopila sus respuestas y utiliza un modelo evaluador para comparar los resultados.
+
+El ejemplo permite analizar cómo varían las respuestas entre proveedores como **OpenAI**, **Gemini**, **Groq** y **Ollama**, aplicando una arquitectura basada en adaptadores para mantener el código modular, extensible y fácil de mantener. 🚀
+
+```mermaid
+flowchart TD
+    A[Inicio del laboratorio] --> B[Inicializar adaptadores]
+    B --> C[Crear clientes para cada proveedor]
+
+    C --> D[Definir instrucción para generar una pregunta]
+    D --> E[OpenAI genera la pregunta base]
+
+    E --> F{Orquestación de modelos}
+
+    F --> G1[OpenAI responde]
+    F --> G2[Gemini responde]
+    F --> G3[Groq responde]
+    F --> G4[Ollama / qwen2.5-coder responde]
+    F --> G5[Ollama / gemma3 responde]
+    F --> G6[Ollama / llama3.2 responde]
+
+    G1 --> H[Recolectar respuestas]
+    G2 --> H
+    G3 --> H
+    G4 --> H
+    G5 --> H
+    G6 --> H
+
+    H --> I[Construir prompt de evaluación]
+    I --> J[OpenAI actúa como juez]
+    J --> K[Evaluar razonamiento, restricciones, claridad y plan de acción]
+    K --> L[Retornar ranking en JSON]
+    L --> M[Mostrar ranking final]
+```
+
+### Resultados
 
 ```text
 ---- GENERA PREGUNTA A OPENIA ----
@@ -41,4 +78,4 @@ Rank 5: gpt-5-nano
 Rank 6: gemini-2.5-flash-lite
 ```
 
-[VER EJEMPLO](./main.py)
+[REGRESAR](../../fundamentos/README.md) | [VER EJEMPLO](./main.py)
