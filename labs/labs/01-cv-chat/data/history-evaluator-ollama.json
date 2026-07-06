@@ -5,61 +5,34 @@
     },
     {
         "role": "assistant",
-        "model": "gpt-5-nano",
+        "model": "qwen2.5-coder:3b",
         "content": "Hola, soy Mauricio Lahuasi. ¿En qué te puedo ayudar?"
     },
     {
         "role": "user",
-        "content": "de que raza es tu gato?"
+        "content": "Como se llama tu abuelo?"
     },
     {
         "role": "assistant",
-        "model": "gpt-5-nano",
-        "content": "No tengo ese dato confirmado en este momento. Puedo hablarte mejor sobre mi experiencia profesional, proyectos o enfoque de desarrollo."
+        "model": "qwen2.5-coder:3b",
+        "content": "Lo siento, pero no tengo esa información confirmada en este momento. Puedo hablarte mejor sobre mi experiencia profesional, proyectos o enfoque de desarrollo."
     },
     {
         "role": "user",
-        "content": "Dime cual es la tecnología que mas dominas?"
+        "content": "Dame un resumen de tus fortalezas"
     },
     {
         "role": "assistant",
-        "model": "gpt-5-nano",
-        "content": "Las dos tecnologías que más domino y que forman parte de mi stack principal son .NET (C#, ASP.NET Core) y Node.js con TypeScript. En mi trayectoria he trabajado mucho con .NET para sistemas empresariales y servicios críticos, y también he desarrollado APIs y soluciones backend modulares con Node.js y TypeScript. Hay evidencia pública de mi trabajo en proyectos como jmlq-ecosystem y jmlq-auth, entre otros. Puedo integrarme a proyectos que usen cualquiera de estas tecnologías y aplicar buenas prácticas de arquitectura, mantenibilidad y pruebas."
+        "model": "qwen2.5-coder:3b",
+        "content": "Mis fortalezas incluyen mi habilidad para aprender rápidamente y aplicar nuevos conocimientos a la medida que los adquiero. También tengo una gran capacidad para resolver problemas creativamente y adaptarme fácilmente a diferentes situaciones. Además, soy un buen comunicador y colaborador, lo que me permite trabajar bien en equipo y mantener relaciones sólidas con mis colegas."
     },
     {
         "role": "user",
-        "content": "Cuales son tus hobbies?"
+        "content": "Como se llama tu madre?"
     },
     {
         "role": "assistant",
-        "model": "gpt-5-nano",
-        "content": "Mis hobbies se pueden agrupar en tres áreas: música, deporte y entretenimiento.\n\n- Música: toco la guitarra de forma autodidacta, me gusta cantar y formo parte de un coro; sigo aprendiendo lectura musical y teoría.\n- Deporte: practico running con regularidad, entrenamiento funcional y tengo interés en Tai Chi para mejorar equilibrio y concentración.\n- Entretenimiento: series y películas, especialmente de fantasía épica y ciencia ficción.\n\nSon actividades que me ayudan a mantener equilibrio, concentración y aprendizaje continuo."
-    },
-    {
-        "role": "user",
-        "content": "eres experto en maven?"
-    },
-    {
-        "role": "assistant",
-        "model": "gpt-5-nano",
-        "content": "No. Maven no es una tecnología de la que haya mostrado experiencia documentada en mi perfil. Mi stack principal está en .NET (C# y ASP.NET Core) y Node.js con TypeScript, además de React, y bases de datos como SQL Server, PostgreSQL y MongoDB. Aunque no tengo evidencia pública de haber trabajado con Maven, tengo un enfoque de aprendizaje continuo y experiencia en CI/CD, contenedorización con Docker y buenas prácticas de arquitectura que facilitan incorporar herramientas nuevas. Si un proyecto lo requiere, puedo integrarme y aplicar prácticas de construcción e integración de forma eficiente."
-    },
-    {
-        "role": "user",
-        "content": "Como puedo contactarme contigo?"
-    },
-    {
-        "role": "assistant",
-        "model": "gpt-5-nano",
-        "content": "Puedes contactarme por estos canales:\n\n- LinkedIn: https://linkedin.com/in/josé-mauricio-lahuasi-quillupangui-1b660874\n- GitHub: https://github.com/MLahuasi\n- Correo electrónico: jmlahuasiq@gmail.com (también aparece jmlahuasiq@hotmail.com en algunas referencias)\n\nSi prefieres que te contacte directamente, deja tu nombre, correo y el motivo de contacto y me pondré en contacto contigo."
-    },
-    {
-        "role": "user",
-        "content": "Me llamo Graciela Lahuasi, mi correo es chelal70@hotmail.com, quiero averiguar que servicios ofreces"
-    },
-    {
-        "role": "assistant",
-        "model": "gpt-5-nano",
-        "content": "Gracias, he enviado la notificación correctamente. Te responderé por correo para coordinar el contacto."
+        "model": "qwen2.5-coder:3b",
+        "content": "Lo siento, pero como asistente de inteligencia artificial, no tengo acceso a información personal sobre mis propietarios o empleadores. No puedo proporcionarte esa información."
     }
 ]

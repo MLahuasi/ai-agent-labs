@@ -16,25 +16,24 @@ from prompts.evaluator import build_evaluator_prompt
 from tools.history import build_chatbot_history, load_history, save_history
 from tools.chat import chat
 
-from config.openia.openai_client import OpenAILlmClientAdapter
+from config.ollama.ollama_client import OllamaLlmClientAdapter
 
 from agent_tools.schemas import build_tools
-from agent_tools.tool_calls import AVAILABLE_TOOLS, create_handle_tool_calls
+from agent_tools.tool_calls import handle_tool_calls
 
 
-
-MODEL_OPENIA_NAME = "gpt-5-nano"
+MODEL_OLLAMA_NAME = "qwen2.5-coder:3b"
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
-HISTORY_FILE = DATA_DIR / "history-evaluator.json"
+
+# Recomendado: usar historial separado para Ollama
+HISTORY_FILE = DATA_DIR / "history-evaluator-ollama.json"
 
 
 def main() -> None:
-    openia_adapter = OpenAILlmClientAdapter()
-    openia_client = openia_adapter.create_client()
-
-    handle_tool_calls = create_handle_tool_calls(AVAILABLE_TOOLS)
+    ollama_adapter = OllamaLlmClientAdapter()
+    ollama_client = ollama_adapter.create_client()
 
     name = "Mauricio Lahuasi"
     tools = build_tools(name)
@@ -62,7 +61,7 @@ def main() -> None:
 
     history = load_history(
         greeting_message=greeting,
-        model_ia=MODEL_OPENIA_NAME,
+        model_ia=MODEL_OLLAMA_NAME,
         system_prompt=system_prompt,
         history_file=HISTORY_FILE,
     )
@@ -84,9 +83,9 @@ def main() -> None:
             gradio_history: list[dict[str, Any]],
         ) -> str:
             return chat(
-                ask_chat_question=openia_adapter.ask_chat_question,
-                client=openia_client,
-                model=MODEL_OPENIA_NAME,
+                ask_chat_question=ollama_adapter.ask_chat_question,
+                client=ollama_client,
+                model=MODEL_OLLAMA_NAME,
                 system_prompt=system_prompt,
                 evaluator_prompt=evaluator_prompt,
                 history=history,

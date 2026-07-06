@@ -1,5 +1,6 @@
 import sys
 import time
+import json
 from pathlib import Path
 from typing import Any, Sequence, cast
 
@@ -19,25 +20,69 @@ from config.shared.llm_client import (
     ToolDefinition,
 )
 from config.shared.roles import normalize_chat_role
-from config.shared.types import ChatMessage, ChatRole
+from config.shared.types import ChatMessage, ChatRole, ToolCallDict
+
 
 
 class OllamaLlmClientAdapter(LlmClientAdapter):
     def create_client(self) -> Client:
         return Client(host=load_ollama_host())
 
-    def get_tool_calls(self, response: ChatResponse) -> Any | None:
+    def get_tool_calls(self, response: ChatResponse) -> object | None:
         message = getattr(response, "message", None)
-
+    
         if message is None:
             return None
-
-        tool_calls = getattr(message, "tool_calls", None)
-
-        if not tool_calls:
+    
+        native_tool_calls = getattr(message, "tool_calls", None)
+    
+        if native_tool_calls:
+            return native_tool_calls
+    
+        content = getattr(message, "content", None)
+    
+        if not isinstance(content, str):
             return None
-
-        return tool_calls
+    
+        content = content.strip()
+    
+        if not content:
+            return None
+    
+        try:
+            parsed_raw: object = json.loads(content)
+        except json.JSONDecodeError:
+            return None
+    
+        if not isinstance(parsed_raw, dict):
+            return None
+    
+        parsed = cast(dict[str, object], parsed_raw)
+    
+        raw_name = parsed.get("name")
+        raw_arguments = parsed.get("arguments", {})
+    
+        if not isinstance(raw_name, str):
+            return None
+    
+        if not isinstance(raw_arguments, dict) and not isinstance(raw_arguments, str):
+            return None
+    
+        if isinstance(raw_arguments, dict):
+            arguments = cast(dict[str, object], raw_arguments)
+        else:
+            arguments = raw_arguments
+    
+        tool_call: ToolCallDict = {
+            "id": "ollama_call_0",
+            "type": "function",
+            "function": {
+                "name": raw_name,
+                "arguments": arguments,
+            },
+        }
+    
+        return [tool_call]    
 
     def append_assistant_tool_call_message(
         self,
@@ -51,18 +96,20 @@ class OllamaLlmClientAdapter(LlmClientAdapter):
         if message is None:
             raise ValueError("Ollama no devolvió un mensaje para tool calls.")
 
-        content = getattr(message, "content", "") or ""
-        tool_calls = getattr(message, "tool_calls", None)
+        # content = getattr(message, "content", "") or ""
+        tool_calls = self.get_tool_calls(response)
 
         if not tool_calls:
             raise ValueError("Ollama no devolvió tool calls en el mensaje.")
+        
+        tool_calls_for_history = cast(list[dict[str, Any]], tool_calls)
 
         messages.append(
             {
                 "role": "assistant",
                 "model": model,
-                "content": content,
-                "tool_calls": tool_calls,
+                "content": "",
+                "tool_calls": tool_calls_for_history,
             }
         )
 
@@ -123,8 +170,6 @@ class OllamaLlmClientAdapter(LlmClientAdapter):
         max_retries: int = 3,
     ) -> ChatResponse:
         messages = self.build_history(history)
-        print("TOOLS send_chat_message_with_retry")
-        print(tools)
 
         if question is not None:
             messages.append(
@@ -216,11 +261,12 @@ class OllamaLlmClientAdapter(LlmClientAdapter):
                 tools=tools,
             )
 
-            print("OLLAMA RESPONSE")
+            print("RAW OLLAMA RESPONSE:")
             print(response)
 
             tool_calls = self.get_tool_calls(response)
-            print("OLLAMA TOOLS")
+
+            print("OLLAMA TOOL CALLS:")
             print(tool_calls)
 
             if not tool_calls:

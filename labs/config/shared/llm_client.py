@@ -1,9 +1,8 @@
-from typing import Any, Callable, Protocol, Sequence
+from typing import Any, Callable, List, Protocol, Sequence
 
-from config.shared.types import ChatRole, ChatMessage
+from config.shared.types import ChatRole, ChatMessage, ToolDefinition
 
 
-ToolDefinition = dict[str, Any]
 HandleToolCalls = Callable[[Any], list[ChatMessage]]
 
 
@@ -21,7 +20,7 @@ class LlmClientAdapter(Protocol):
         model: str,
         history: list[ChatMessage],
         question: str | None = None,
-        tools: Sequence[ToolDefinition] | None = None,
+        tools: List[ToolDefinition] | None = None,
         max_retries: int = 3,
     ) -> Any:
         ...

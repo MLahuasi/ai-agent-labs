@@ -154,7 +154,7 @@ class OpenAILlmClientAdapter(LlmClientAdapter):
                         model=model,
                         messages=messages,
                     )
-
+                
                 return client.chat.completions.create(
                     model=model,
                     messages=messages,

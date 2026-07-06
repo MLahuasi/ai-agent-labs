@@ -1,8 +1,10 @@
-from typing import Any
 
 
-def build_tools(person_name: str) -> list[dict[str, Any]]:
-    record_user_details_schema: dict[str, Any] = {
+from config.shared.types import RecordUnknownQuestionSchema, RecordUserDetailsSchema, SendEmailToAdminSchema, ToolDefinition
+
+
+def build_tools(person_name: str) -> list[ToolDefinition]:
+    record_user_details_schema: RecordUserDetailsSchema = {
         "name": "record_user_details",
         "description": (
             "Usa esta herramienta obligatoriamente cuando el usuario proporcione "
@@ -48,11 +50,11 @@ def build_tools(person_name: str) -> list[dict[str, Any]]:
         },
     }
 
-    record_unknown_question_schema: dict[str, Any] = {
+    record_unknown_question_schema: RecordUnknownQuestionSchema = {
         "name": "record_unknown_question",
         "description": (
             "Usa esta herramienta obligatoriamente cuando el usuario haga una "
-            f"pregunta que no pueda responderse honestamente con la información "
+            "pregunta que no pueda responderse honestamente con la información "
             f"disponible sobre {person_name}, su perfil, CV, LinkedIn o proyectos "
             "públicos de GitHub. Incluye preguntas sobre datos personales, datos "
             "familiares, preferencias, experiencias, fechas, clientes, estudios, "
@@ -76,7 +78,7 @@ def build_tools(person_name: str) -> list[dict[str, Any]]:
         },
     }
 
-    send_email_to_admin_schema: dict[str, Any] = {
+    send_email_to_admin_schema: SendEmailToAdminSchema = {
         "name": "send_email_to_admin",
         "description": (
             "Usa esta herramienta solo para enviar una notificación administrativa "
