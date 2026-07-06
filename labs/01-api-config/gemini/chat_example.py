@@ -4,15 +4,15 @@ from pathlib import Path
 LABS_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(LABS_DIR))
 
-from config.gemini.gemini_client import create_gemini_client as create_base_gemini_client, ask_chat_question
+from config.gemini.gemini_client import  GeminiLlmClientAdapter
 from config.shared.types import ChatMessage
 from google.genai import Client
 
 
 
 
-def create_gemini_client() -> Client:
-    return create_base_gemini_client()
+def create_gemini_client():
+    return Client()
 
 
 def execute_chat_example(
@@ -20,6 +20,7 @@ def execute_chat_example(
         model: str,
         messages: list[ChatMessage],
 ) -> None:
+    
     print("*** CHAT GEMINI ***")
 
     question = (
@@ -28,7 +29,9 @@ def execute_chat_example(
         "Responde únicamente con la pregunta."
     )
 
-    answer = ask_chat_question(
+    gemini_client = GeminiLlmClientAdapter()
+
+    answer = gemini_client.ask_chat_question(
         client=client,
         messages=messages,
         model=model,
@@ -44,13 +47,13 @@ def execute_chat_custom_example(
         messages: list[ChatMessage],
 ) -> None:
     print("------- GEMINI AGENTIC SIMPLE -------")
-
+    gemini_client = GeminiLlmClientAdapter()
     question = (
         "Elige una tarea cotidiana que pueda mejorar con un agente de IA. "
         "Responde solo con el nombre de la tarea, maximo 6 palabras."
     )
 
-    answer = ask_chat_question(
+    answer = gemini_client.ask_chat_question(
         client=client,
         messages=messages,
         model=model,
@@ -64,7 +67,7 @@ def execute_chat_custom_example(
         "Responde en una frase de maximo 12 palabras."
     )
 
-    answer = ask_chat_question(
+    answer = gemini_client.ask_chat_question(
         client=client,
         messages=messages,
         model=model,
@@ -77,7 +80,7 @@ def execute_chat_custom_example(
         "Responde en una frase de maximo 15 palabras."
     )
 
-    answer = ask_chat_question(
+    answer = gemini_client.ask_chat_question(
         client=client,
         messages=messages,
         model=model,
