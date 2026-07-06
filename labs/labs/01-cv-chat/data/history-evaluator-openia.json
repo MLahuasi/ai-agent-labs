@@ -5,7 +5,7 @@
     },
     {
         "role": "assistant",
-        "model": "qwen2.5-coder:3b",
+        "model": "gpt-5-nano",
         "content": "Hola, soy Mauricio Lahuasi. ¿En qué te puedo ayudar?"
     },
     {
@@ -14,8 +14,8 @@
     },
     {
         "role": "assistant",
-        "model": "qwen2.5-coder:3b",
-        "content": "Gracias, he enviado la notificación correctamente. Te responderé por correo para coordinar el contacto."
+        "model": "gpt-5-nano",
+        "content": "No tengo ese dato confirmado en este momento. Puedo hablarte mejor sobre mi experiencia profesional, proyectos o enfoque de desarrollo."
     },
     {
         "role": "user",
@@ -23,7 +23,16 @@
     },
     {
         "role": "assistant",
-        "model": "qwen2.5-coder:3b",
+        "model": "gpt-5-nano",
+        "content": "Puedes contactarme por LinkedIn, GitHub o correo electrónico:\n\n- LinkedIn: https://linkedin.com/in/josé-mauricio-lahuasi-quillupangui-1b660874\n- GitHub: https://github.com/MLahuasi\n- Correo: jmlahuasiq@gmail.com (también puedo usar jmlahuasiq@hotmail.com)\n\nSi prefieres que te contacte directamente, déjame tu nombre, correo y el motivo de contacto y me pondré en contacto."
+    },
+    {
+        "role": "user",
+        "content": "Mauricio Lahuasi, mi correo es jmlq@gmail.com, Quiero información acerca de servicios, disponibilidad y costos"
+    },
+    {
+        "role": "assistant",
+        "model": "gpt-5-nano",
         "content": "Gracias, he enviado la notificación correctamente. Te responderé por correo para coordinar el contacto."
     }
 ]

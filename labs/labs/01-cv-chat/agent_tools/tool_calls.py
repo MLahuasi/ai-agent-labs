@@ -79,6 +79,25 @@ def get_tool_arguments(tool_call: NormalizedToolCall) -> ToolArguments:
     return cast(ToolArguments, parsed_raw)
 
 
+def build_blocked_tool_response(
+    tool_name: str,
+    tool_call_id: str,
+) -> ChatMessage:
+    response: ToolResponse = {
+        "action": "blocked",
+        "status": "error",
+        "message": (
+            f"La herramienta '{tool_name}' no está permitida en este flujo."
+        ),
+    }
+
+    return {
+        "role": "tool",
+        "name": tool_name,
+        "content": json.dumps(response, ensure_ascii=False),
+        "tool_call_id": tool_call_id,
+    }
+
 def execute_tool_call(
     tool_name: str,
     arguments: ToolArguments,
@@ -87,8 +106,9 @@ def execute_tool_call(
     tool = AVAILABLE_TOOLS.get(tool_name)
 
     if tool is None:
-        raise ValueError(
-            f"La herramienta '{tool_name}' no está registrada en AVAILABLE_TOOLS."
+        return build_blocked_tool_response(
+            tool_name=tool_name,
+            tool_call_id=tool_call_id,
         )
 
     response = tool(**arguments)
