@@ -1,7 +1,7 @@
 import sys
 import time
 from pathlib import Path
-from typing import Any, Sequence, cast
+from typing import Any, Mapping, Sequence, cast
 
 from google import genai
 from google.genai import Client, types
@@ -23,10 +23,69 @@ from config.shared.roles import normalize_chat_role
 from config.shared.types import ChatMessage, ChatRole
 
 
+
 class GeminiLlmClientAdapter(LlmClientAdapter):
     def create_client(self) -> Client:
         load_gemini_api_key()
         return genai.Client()
+
+    def build_gemini_tools(
+        self,
+        tools: Sequence[ToolDefinition] | None,
+    ) -> list[types.Tool] | None:
+        if not tools:
+            return None
+
+        function_declarations: list[types.FunctionDeclaration] = []
+
+        for tool in tools:
+            tool_dict = cast(dict[str, Any], tool)
+
+            # Formato OpenAI:
+            # {
+            #   "type": "function",
+            #   "function": {
+            #       "name": "...",
+            #       "description": "...",
+            #       "parameters": {...}
+            #   }
+            # }
+            
+            # function_def = tool_dict.get("function")
+            function_def_raw = tool_dict.get("function")
+
+            # if not isinstance(function_def, dict):
+            if not isinstance(function_def_raw, dict):
+                continue
+
+            function_def = cast(Mapping[str, Any], function_def_raw)
+            
+            name_raw = function_def.get("name")
+            description_raw = function_def.get("description", "")
+            parameters = function_def.get("parameters")
+
+            if not isinstance(name_raw, str):
+                continue
+
+            name = name_raw
+            description = description_raw if isinstance(description_raw, str) else ""
+
+            function_declarations.append(
+                types.FunctionDeclaration(
+                    name=name,
+                    description=str(description),
+                    parameters_json_schema=parameters,
+                )
+            )
+
+        if not function_declarations:
+            return None
+
+        return [
+            types.Tool(
+                function_declarations=function_declarations,
+            )
+        ]
 
     def get_tool_calls(self, response: types.GenerateContentResponse) -> Any | None:
         candidates = getattr(response, "candidates", None)
@@ -148,19 +207,34 @@ class GeminiLlmClientAdapter(LlmClientAdapter):
 
         return history
 
+    # def build_config(
+    #     self,
+    #     tools: Sequence[ToolDefinition] | None = None,
+    # ) -> types.GenerateContentConfig:
+    #     if tools is None:
+    #         return GEMINI_GENERATION_CONFIG
+
+    #     base_config = cast(Any, GEMINI_GENERATION_CONFIG).model_dump(
+    #         exclude_none=True
+    #     )
+    #     base_config["tools"] = cast(Any, tools)
+
+    #     return types.GenerateContentConfig(**base_config)
+
     def build_config(
         self,
         tools: Sequence[ToolDefinition] | None = None,
     ) -> types.GenerateContentConfig:
-        if tools is None:
-            return GEMINI_GENERATION_CONFIG
-
         base_config = cast(Any, GEMINI_GENERATION_CONFIG).model_dump(
             exclude_none=True
         )
-        base_config["tools"] = cast(Any, tools)
 
-        return types.GenerateContentConfig(**base_config)
+        gemini_tools = self.build_gemini_tools(tools)
+
+        if gemini_tools is not None:
+            base_config["tools"] = gemini_tools
+
+        return types.GenerateContentConfig(**base_config)    
 
     def send_chat_message_with_retry(
         self,

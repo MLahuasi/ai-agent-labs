@@ -5,11 +5,25 @@
     },
     {
         "role": "assistant",
-        "model": "gemma3:4b",
+        "model": "llama3.2:3b",
         "content": "Hola, soy Mauricio Lahuasi. ¿En qué te puedo ayudar?"
     },
     {
         "role": "user",
-        "content": "Como se llama tu abuelo paterno?"
+        "content": "Como se llama mi abuelo paterno?"
+    },
+    {
+        "role": "assistant",
+        "model": "llama3.2:3b",
+        "content": "However, I didn't receive any specific question from the user. Can you please provide me with the original question that was raised when the tool calling occurred? I'll do my best to format an answer based on the output received.\n\nPlease share the response from the tool call, and I'll help you create a response for the question."
+    },
+    {
+        "role": "user",
+        "content": "Dame un resumen de mis soft skills?"
+    },
+    {
+        "role": "assistant",
+        "model": "llama3.2:3b",
+        "content": "It seems like you've mentioned that there's a record of the question not being answered yet, but the actual question itself has not been provided. The output you shared is an action log message from your tool calling capabilities.\n\nTo help you with providing a response to the original user question, I'll need you to provide the question that was not previously answered. Please share it with me so I can assist you in generating an appropriate response using the provided information about tools and their knowledge confidences."
     }
 ]

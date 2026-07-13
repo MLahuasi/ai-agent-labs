@@ -41,14 +41,12 @@ def main() -> None:
 
     greeting = build_greeting_message(name)
     summary = read_text_file(DATA_DIR / "summary.txt")
-    cv = read_pdf(DATA_DIR / "cv_ml.pdf")
-    linkedin = read_pdf(DATA_DIR / "cv-ml-linkedIn.pdf")
+    cv = read_pdf(DATA_DIR / "cv_2026.pdf")    
     github_projects = read_json_file(DATA_DIR / "github-projects-knowledge.json")
 
     system_prompt = build_system_prompt(
         cv=cv,
-        github_projects=github_projects,
-        linkedin=linkedin,
+        github_projects=github_projects,        
         summary=summary,
         name=name,
     )

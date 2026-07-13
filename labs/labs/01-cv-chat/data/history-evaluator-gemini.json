@@ -5,11 +5,61 @@
     },
     {
         "role": "assistant",
-        "model": "gemma3:4b",
+        "model": "gemini-2.5-flash-lite",
         "content": "Hola, soy Mauricio Lahuasi. ¿En qué te puedo ayudar?"
     },
     {
         "role": "user",
-        "content": "Como se llama tu abuelo paterno?"
+        "content": "Como se llama tu abuelo?"
+    },
+    {
+        "role": "assistant",
+        "model": "gemini-2.5-flash-lite",
+        "content": "No tengo ese dato confirmado en este momento. Puedo hablarte mejor sobre mi experiencia profesional, proyectos o enfoque de desarrollo."
+    },
+    {
+        "role": "user",
+        "content": "eres experto en core bancario verdad?"
+    },
+    {
+        "role": "assistant",
+        "model": "gemini-2.5-flash-lite",
+        "content": "Soy Ingeniero en Sistemas y Senior Software Developer. A lo largo de mi carrera he trabajado con tecnologías como .NET, Node.js, TypeScript, React, SQL Server, PostgreSQL y MongoDB, participando en proyectos empresariales, sistemas críticos y procesos de modernización tecnológica. Mi experiencia profesional general incluye el desarrollo, mantenimiento y evolución de aplicaciones empresariales con C#, ASP.NET, JavaScript y SQL Server, así como la refactorización de módulos, corrección de errores, optimización de código y mejora de estabilidad en sistemas corporativos. También he participado en proyectos de mediana y gran escala, priorizando rendimiento, mantenibilidad y calidad del software.\n\nSi bien he trabajado en sistemas críticos y empresariales, no tengo información específica sobre experiencia"
+    },
+    {
+        "role": "user",
+        "content": "dame un resumen de tus soft skills"
+    },
+    {
+        "role": "assistant",
+        "model": "gemini-2.5-flash-lite",
+        "content": "Mis soft skills se centran en la **comunicación clara**, tanto con usuarios como con equipos técnicos y áreas funcionales. Tengo una fuerte **orientación al análisis y resolución de problemas complejos**, abordándolos de manera metódica antes de proponer soluciones.\n\nProfesionalmente, destaco por mi **responsabilidad**, mi **atención al detalle** y mi compromiso con la **calidad** y la **continuidad operativa**. Soy **perseverante** y **reflexivo**, buscando siempre actuar con honestidad y mantener mis compromisos.\n\nAdemás, poseo una gran **capacidad de aprendizaje continuo** y **adaptabilidad tecnológica**, lo que me permite explorar nuevas herramientas y patrones. Valoro la **colaboración**"
+    },
+    {
+        "role": "user",
+        "content": "Dame un resumen de tus hard skills"
+    },
+    {
+        "role": "assistant",
+        "model": "gemini-2.5-flash-lite",
+        "content": "En cuanto a mis hard skills, mi especialización se encuentra en el **backend**, con una sólida experiencia en **C#**, **.NET Framework**, **.NET Core**, **ASP.NET Core**, **Web API**, **Node.js**, **TypeScript** y **Express.js**. También tengo competencia en **React.js** y **Next.js** para el frontend.\n\nEn el ámbito de la **arquitectura y diseño de software**, aplico principios como **Clean Architecture**, **Arquitectura Hexagonal**, **Domain-Driven Design (DDD)**, **SOLID** y **Clean Code**.\n\nManejo diversas **bases de datos y tecnologías de persistencia** como **SQL Server**, **PostgreSQL**, **MongoDB"
+    },
+    {
+        "role": "user",
+        "content": "como puedo contactarme contigo?"
+    },
+    {
+        "role": "assistant",
+        "model": "gemini-2.5-flash-lite",
+        "content": "Puedes contactarme a través de mi perfil de LinkedIn, mi repositorio público de GitHub o mi correo electrónico.\n\nLinkedIn: linkedin.com/in/josé-mauricio-lahuasi-quillupangui-1b660874\nGitHub: https://github.com/MLahuasi\nEmail: jmlahuasiq@gmail.com\n\nSi deseas, puedes dejarme tu nombre, correo y el motivo de tu contacto para que me comunique contigo."
+    },
+    {
+        "role": "user",
+        "content": "Mauricio Lahuasi, jmlq@gmail.com, Posibilidad de trabajar en un proyecto, disponibilidad y costo"
+    },
+    {
+        "role": "assistant",
+        "model": "gemini-2.5-flash-lite",
+        "content": "Gracias, me comunicaré contigo pronto."
     }
 ]

@@ -6,7 +6,7 @@ sys.path.insert(0, str(LABS_DIR))
 
 from config.ollama.ollama_client import OllamaLlmClientAdapter
 from config.shared.types import ChatMessage
-from ollama import Client
+from openai import OpenAI as Client
 
 
 def create_ollama_client() -> Client:

@@ -4,8 +4,12 @@ from dotenv import load_dotenv
 
 
 OLLAMA_CHAT_OPTIONS: dict[str, object] = {
-    "temperature": 0.4,
-    "num_predict": 150,
+    "temperature": 0.1,
+    "top_p": 0.7,
+    "top_k": 30,
+    "repeat_penalty": 1.1,
+    "num_predict": 512,
+    "num_ctx": 4096,
 }
 
 

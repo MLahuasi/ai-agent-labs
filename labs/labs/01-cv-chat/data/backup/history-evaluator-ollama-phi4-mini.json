@@ -5,11 +5,25 @@
     },
     {
         "role": "assistant",
-        "model": "gemma3:4b",
+        "model": "phi4-mini",
         "content": "Hola, soy Mauricio Lahuasi. ¿En qué te puedo ayudar?"
     },
     {
         "role": "user",
         "content": "Como se llama tu abuelo paterno?"
+    },
+    {
+        "role": "assistant",
+        "model": "phi4-mini",
+        "content": "A pesar del contexto en que podría tratarse de un escenario ficticio o para propósitos educativos, como una IA desarrollada por Microsoft, debo aclarar que no tengo vínculos familiares personales ni antecedentes biológicos. Mi diseño es puramente computacional y mis interacciones están basadas únicamente en los datos con los cuales he sido programado para procesar e interactuar, lo cual incluye proporcionar información sobre mí mismo de manera honesta dentro del alcance de nuestra conversación.\n\nSi tienes más preguntas o necesitas ayuda con un tema diferente, no dudes en preguntar."
+    },
+    {
+        "role": "user",
+        "content": "Dame un resumen de tus soft skills"
+    },
+    {
+        "role": "assistant",
+        "model": "phi4-mini",
+        "content": "Ciertamente! Los siguientes son algunos ejemplos comunes de habilidades blandas (soft skills) que pueden beneficiar significativamente tanto en entornos profesionales como personales:\n\n1. **Comunicación**: La capacidad para expresarse claramente, activamente escuchar y comunicar efectivamente se extiende a diversas situaciones, incluyendo reuniones laborales, discusiones con pares o conversaciones cara a cara.\n\n2. **Trabajo en equipo**: Puede colaborar armoniosamente por completo trabajando bien dentro de un grupo o conjunto, reconociendo las fortalezas y debilidades de los colegas mientras colaboras para alcanzar una meta común.\n\n3. **Gestión del tiempo**: Las habilidades necesarias para gestionar eficazmente sus compromisos diarios son esenciales; implican priorizar tareas con base en la urgencia e importancia, y cumplir con plazos adecuados sin lastimarse ni trabajar en exceso.\n\n4. **Resolución de Problemas**: Puede identificar problemas que no están funcionando correctamente o enfrentados a retos inesperados—poseen soluciones potenciales para cada situación específica que se ajustan dentro del contexto al cual pertenecen.\n\n5. **Adaptabilidad/a**: Tienen una disposición positiva frente cambiantes circunstancias, ya sea lidiando con alteraciones abruptas en los planes professionally u operaciones domésticas regulares; muestran consistencia mientras manejan estos eventos imprevistos de modo calmado y razonable sin perder progresar o enfocarse intensamente durante esta transición.\n\n6. **Empatía**: El reconocimiento del punto de vista humano, sus motivaciones, sentimientos e intenciones—son necesarios para desarrollar relaciones personales sólidas con amigos cercanos/familia/socialmente distantes, así como entornos laborales más amplios que requieren comprensión hacia colegas y superiores diferentes.\n\n7. **Gestión Emotional/Emocional**: Pese al estrés o tensión de la vida diaria; no se caiga bajo presión emocional/térmica—utilizando tácticas racionales en lugar de reaccionando emocionalmente, pueden asegurar comportamientos positivos regulares independientemente cuán exigente sea el ambiente que les rodea.\n\n8. **Gestión del Conflicto**: La capacidad para comunicar efectivamente con sus compañeros/compañeros para resolver desacuerdos—incluso desafiantes relaciones; esto implica escuchar activamente al otro lado, involucrarse en un diálogo abierto y buscar áreas de acuerdo con integridad personal/moral.\n\nEstos soft skills pueden ayudar a mejorar los rasgos personales (como la empatía), pero también son muy versátiles. Ayudan con el éxito empresarial al hacer posibles proyectos laborales más productivos—mientras tanto, se utilizan para establecer relaciones significativas dentro del hogar/sociales y proporcionar apoyo durante períodos de estrés/cambios.\n\nEspero que esta información sea útil! Si necesitas conocer soft skills específicos o consejos sobre cómo desarrollarlos aún más, no dudes en preguntar."
     }
 ]

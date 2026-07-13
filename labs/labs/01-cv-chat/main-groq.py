@@ -16,24 +16,24 @@ from prompts.evaluator import build_evaluator_prompt
 from tools.history import build_chatbot_history, load_history, save_history
 from tools.chat import chat
 
-from config.ollama.ollama_client import OllamaLlmClientAdapter
+from config.groq.groq_client import GroqLlmClientAdapter
 
 from agent_tools.schemas import build_tools
 from agent_tools.tool_calls import handle_tool_calls
 
 
-MODEL_OLLAMA_NAME = "gemma3:4b"
+MODEL_GROQ_NAME = "llama-3.1-8b-instant"
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 
-# Recomendado: usar historial separado para Ollama
-HISTORY_FILE = DATA_DIR / "history-evaluator-ollama.json"
+# Recomendado: usar historial separado para Groq
+HISTORY_FILE = DATA_DIR / "history-evaluator-groq.json"
 
 
 def main() -> None:
-    ollama_adapter = OllamaLlmClientAdapter()
-    ollama_client = ollama_adapter.create_client()
+    groq_adapter = GroqLlmClientAdapter()
+    groq_client = groq_adapter.create_client()
 
     name = "Mauricio Lahuasi"
     tools = build_tools(name)
@@ -59,7 +59,7 @@ def main() -> None:
 
     history = load_history(
         greeting_message=greeting,
-        model_ia=MODEL_OLLAMA_NAME,
+        model_ia=MODEL_GROQ_NAME,
         system_prompt=system_prompt,
         history_file=HISTORY_FILE,
     )
@@ -81,9 +81,9 @@ def main() -> None:
             gradio_history: list[dict[str, Any]],
         ) -> str:
             return chat(
-                ask_chat_question=ollama_adapter.ask_chat_question,
-                client=ollama_client,
-                model=MODEL_OLLAMA_NAME,
+                ask_chat_question=groq_adapter.ask_chat_question,
+                client=groq_client,
+                model=MODEL_GROQ_NAME,
                 system_prompt=system_prompt,
                 evaluator_prompt=evaluator_prompt,
                 history=history,

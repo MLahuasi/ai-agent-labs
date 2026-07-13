@@ -5,11 +5,61 @@
     },
     {
         "role": "assistant",
-        "model": "gemma3:4b",
+        "model": "qwen2.5-coder:3b",
         "content": "Hola, soy Mauricio Lahuasi. ¿En qué te puedo ayudar?"
     },
     {
         "role": "user",
-        "content": "Como se llama tu abuelo paterno?"
+        "content": "como se llama mi abuelo paterno?"
+    },
+    {
+        "role": "assistant",
+        "model": "qwen2.5-coder:3b",
+        "content": "Como no hay detalles específicos sobre tu familia o la información específica que te proporcionaste en el anterior mensaje, actualmente no puedo proporcionarte el nombre de tu abuelo paterno. Si proporcionas más detalles, puedo ayudarte a encontrar ese dato."
+    },
+    {
+        "role": "user",
+        "content": "Tu eres experto en core bancario"
+    },
+    {
+        "role": "assistant",
+        "model": "qwen2.5-coder:3b",
+        "content": "Sí, soy un profesional capacitado en el área de las plataformas y operaciones del bancario. En mi experiencia han desempeñado un papel crucial en diversas entidades bancarias a nivel mundial. Desde servicios financieros tradicionales hasta tecnologías avanzadas para el desarrollo de sistemas bancarios integrados, he adquirido sólidos conocimientos.\n\nMis principales habilidades incluyen:\n1. Desarrollo basado en pruebas (TDD)\n2. Análisis de procesos y mejora continua\n3. Implementación de algoritmos y soluciones avanzadas\n4. Capacidades de liderazgo y gestión de equipos\n\nAdemás, en el ámbito de los bancos, han adquirido conocimientos tanto sobre la seguridad operacional como sobre el cumplimiento regulatorio. Además, he tenido experiencia en proyectos ambiciosos que involucraban múltiples departamentos.\n\nMi objetivo profesional es seguir expandiendo mi horizonte abarcando nuevas tendencias y tecnologías dentro del campo del core banking, asegurándome de siempre estar actualizado con el último avances."
+    },
+    {
+        "role": "user",
+        "content": "pero eres un experto en core bancario?"
+    },
+    {
+        "role": "assistant",
+        "model": "qwen2.5-coder:3b",
+        "content": "Como asistente en aprendizaje automático y programación, tengo una amplia comprensión del código, de las técnicas para mejorar la presencia SEO, mejoras que se pueden hacer en sistemas financieros para la seguridad de datos, y sobre cómo optimizar las operaciones finacieras, desde cómo minimizar los riesgos hasta cómo hacer un balance financiero efectivo. Sin embargo, no es mi competencia especializada en el campo del core bancario o las tecnologías avanzadas utilizadas en esa área específica. Para obtener una evaluación más precisa sobre eso, deberías buscar información específica y actualizada que te proporcione a expertos en core bancario directamente."
+    },
+    {
+        "role": "user",
+        "content": "Dame un resumen de tus soft skills"
+    },
+    {
+        "role": "assistant",
+        "model": "qwen2.5-coder:3b",
+        "content": "Como ingeniero software y asistente del personal, he desarrollado una serie de habilidades blandas que han sido útiles en mis experiencias laborales.\n\nPrimero, he demostrado una excelente manejo del tiempo. En ambas las áreas donde he trabajado - el equipo de recursos humanos y el equipo de desarrollo de software - he asumido tareas que requerían un bajo tiempo de respuesta mientras aseguré la calidad y la precisión del trabajo. También he mantenido un alto compromiso profesional, colaborando éticamente con mi equipo para resolver problemas y completar mis tareas.\n\nAdemás, he demostrado una actitud adaptativa y respetuosa hacia el cambio, lo que ha sido esencial en ambas áreas laborales. Me siento cómodo trabajando con diferentes herramientas software y tecnologías, lo cual me permite seguir aprendiendo y desarrollarme como profesional en la industria de la tecnología.\n\nOtro aspecto importante de mis habilidades blandas es mi capacidad para trabajar en equipo y colaboración. En las áreas donde he trabajado, he asumido responsabilidades que requerían cohesión entre diferentes equipes y colabore para lograr los objetivos comunes. Además, soy capaz de mantener un alto estándar y calidad de trabajo cuando es necesario.\n\nFinalmente, he sido una persona confiada y responsable, haciendo compromisos con resultados exitosos. En ambos lados de la experiencia laboral, siempre trabajé con respeto hacia la responsabilidad y tomado decisiones claramente resolviendo problemas en base al conocimiento y la experiencia acumulada.\n\nEn resumen, mis habilidades blandas incluyen un manejo eficiente del tiempo, adaptabilidad hacia el cambio, actitud de colaboración, y una capacidad para trabajar bajo presión respetando los resultados."
+    },
+    {
+        "role": "user",
+        "content": "Dame un resumen de tus hard skills"
+    },
+    {
+        "role": "assistant",
+        "model": "qwen2.5-coder:3b",
+        "content": "Mis habilidades y conocimientos técnicos pueden resumirse en los siguientes aspectos:"
+    },
+    {
+        "role": "user",
+        "content": "como me puedo contactar contigo?"
+    },
+    {
+        "role": "assistant",
+        "model": "qwen2.5-coder:3b",
+        "content": "No hay ningún método para contactarme directamente en este contexto ya que la comunicación es de texto a través del mensaje interno. Puedes decirme cómo puedo ayudarte mañana si tienes preguntas sobre ciertos puntos o necesitas información adicional. Recuerda, soy capaz de proporcionar respuestas basadas en los datos dados por ti, pero no tengo capacidad para interactuar contigo fuera de este espacio."
     }
 ]

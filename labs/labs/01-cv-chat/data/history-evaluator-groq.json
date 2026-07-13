@@ -5,7 +5,7 @@
     },
     {
         "role": "assistant",
-        "model": "gemma3:4b",
+        "model": "llama-3.1-8b-instant",
         "content": "Hola, soy Mauricio Lahuasi. ¿En qué te puedo ayudar?"
     },
     {

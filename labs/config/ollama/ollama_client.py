@@ -1,11 +1,11 @@
-import json
 import sys
 import time
+import traceback
 from pathlib import Path
 from typing import Any, Sequence, cast
-from uuid import uuid4
 
-from ollama import ChatResponse, Client
+from openai import OpenAI
+from openai.types.chat import ChatCompletion, ChatCompletionMessageParam
 
 LABS_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(LABS_DIR))
@@ -24,231 +24,198 @@ from config.shared.roles import normalize_chat_role
 from config.shared.types import ChatMessage, ChatRole
 
 
-ALLOWED_SYNTHETIC_TOOL_NAMES = {
-    "record_user_details",
-    "record_unknown_question",
-    "send_email_to_admin"
-}
-
-
 class OllamaLlmClientAdapter(LlmClientAdapter):
-    def create_client(self) -> Client:
-        return Client(host=load_ollama_host())
+    def create_client(self) -> OpenAI:
+        ollama_host = load_ollama_host().rstrip("/")
 
-    def extract_json_content(self, content: str) -> str:
-        text = content.strip()
+        return OpenAI(
+            base_url=f"{ollama_host}/v1",
+            api_key="ollama",
+        )
 
-        if not text.startswith("```"):
-            return text
-
-        lines = text.splitlines()
-
-        if lines and lines[0].strip().startswith("```"):
-            lines = lines[1:]
-
-        if lines and lines[-1].strip() == "```":
-            lines = lines[:-1]
-
-        return "\n".join(lines).strip()
-
-    def parse_synthetic_tool_call(
-        self,
-        content: str,
-    ) -> tuple[str, dict[str, Any]] | None:
-        json_content = self.extract_json_content(content)
-
-        try:
-            raw_payload: Any = json.loads(json_content)
-        except json.JSONDecodeError:
+    def get_tool_calls(self, response: ChatCompletion) -> Any | None:
+        if not response.choices:
             return None
 
-        if not isinstance(raw_payload, dict):
-            return None
-
-        payload = cast(dict[str, Any], raw_payload)
-
-        tool_name = payload.get("name")
-
-        if not isinstance(tool_name, str):
-            return None
-
-        raw_arguments = payload.get("arguments")
-
-        if raw_arguments is None:
-            arguments: dict[str, Any] = {}
-        elif isinstance(raw_arguments, dict):
-            arguments = cast(dict[str, Any], raw_arguments)
-        else:
-            return None
-
-        return tool_name, arguments
-
-    def build_synthetic_tool_calls(
-        self,
-        content: str,
-    ) -> list[dict[str, Any]] | None:
-        parsed = self.parse_synthetic_tool_call(content)
-
-        if parsed is None:
-            return None
-
-        tool_name, arguments = parsed
-
-        if tool_name not in ALLOWED_SYNTHETIC_TOOL_NAMES:
-            return None
-
-        return [
-            {
-                "id": f"ollama-tool-call-{uuid4().hex}",
-                "type": "function",
-                "function": {
-                    "name": tool_name,
-                    "arguments": arguments,
-                },
-            }
-        ]
-
-    def get_tool_calls(self, response: ChatResponse) -> Any | None:
-        message = getattr(response, "message", None)
-
-        if message is None:
-            return None
-
-        tool_calls = getattr(message, "tool_calls", None)
-
-        if tool_calls:
-            return tool_calls
-
-        content = getattr(message, "content", None)
-
-        if not isinstance(content, str) or not content.strip():
-            return None
-
-        return self.build_synthetic_tool_calls(content)
+        message = response.choices[0].message
+        return getattr(message, "tool_calls", None)
 
     def append_assistant_tool_call_message(
         self,
         *,
         messages: list[ChatMessage],
-        response: ChatResponse,
+        response: ChatCompletion,
         model: str,
     ) -> None:
-        message = getattr(response, "message", None)
+        if not response.choices:
+            raise ValueError("Ollama no devolvió opciones de respuesta.")
 
-        if message is None:
-            raise ValueError("Ollama no devolvió un mensaje para tool calls.")
-
-        native_tool_calls = getattr(message, "tool_calls", None)
-        content = getattr(message, "content", "") or ""
-
-        tool_calls = self.get_tool_calls(response)
+        message = response.choices[0].message
+        tool_calls = message.tool_calls or []
 
         if not tool_calls:
             raise ValueError("Ollama no devolvió tool calls en el mensaje.")
 
-        # Cuando Ollama simula una tool call escribiendo JSON en content,
-        # no debemos guardar ese JSON como contenido visible del assistant.
-        # Si lo guardamos, el modelo tiende a seguir respondiendo con JSON/tools.
-        if not native_tool_calls:
-            content = ""
+        serializable_tool_calls: list[dict[str, Any]] = []
+
+        for tool_call in tool_calls:
+            if hasattr(tool_call, "model_dump"):
+                serializable_tool_calls.append(
+                    tool_call.model_dump(exclude_none=True)
+                )
+            else:
+                serializable_tool_calls.append(cast(dict[str, Any], tool_call))
 
         messages.append(
             {
                 "role": "assistant",
                 "model": model,
-                "content": content,
-                "tool_calls": tool_calls,
+                "content": message.content or "",
+                "tool_calls": serializable_tool_calls,
             }
         )
 
-    def build_history(self, messages: list[ChatMessage]) -> list[dict[str, Any]]:
-        history: list[dict[str, Any]] = []
+    def build_history(
+        self,
+        messages: list[ChatMessage],
+    ) -> list[ChatCompletionMessageParam]:
+        history: list[ChatCompletionMessageParam] = []
+
+        pending_tool_call_ids: list[str] = []
 
         for message in messages:
             role = normalize_chat_role(message["role"])
-            content = message.get("content") or ""
 
-            if role == "system":
-                payload: dict[str, Any] = {
-                    "role": "system",
-                    "content": content,
-                }
+            if pending_tool_call_ids and role != "tool":
+                raise ValueError(
+                    "Historial inválido: un mensaje assistant con tool_calls debe "
+                    "estar seguido inmediatamente por mensajes role='tool'. "
+                    f"Tool calls pendientes: {pending_tool_call_ids}"
+                )
 
-            elif role == "user":
-                payload = {
-                    "role": "user",
-                    "content": content,
-                }
+            content = message.get("content")
 
-            elif role == "tool":
-                payload = {
-                    "role": "tool",
-                    "content": content,
-                }
+            if content is None:
+                content = ""
 
+            payload: dict[str, Any] = {
+                "role": role,
+                "content": content,
+            }
+
+            if role == "tool":
                 tool_call_id = message.get("tool_call_id")
-                if tool_call_id is not None:
-                    payload["tool_call_id"] = tool_call_id
 
-                tool_name = message.get("name")
-                if tool_name is not None:
-                    payload["name"] = tool_name
+                if tool_call_id is None:
+                    raise ValueError("El mensaje con role='tool' no tiene tool_call_id.")
 
-            else:
-                payload = {
-                    "role": "assistant",
-                    "content": content,
-                }
+                payload["tool_call_id"] = tool_call_id
 
-                if "tool_calls" in message:
-                    payload["tool_calls"] = message["tool_calls"]
+                if tool_call_id in pending_tool_call_ids:
+                    pending_tool_call_ids.remove(tool_call_id)
 
-            history.append(payload)
+            if role == "assistant":
+                tool_calls = message.get("tool_calls")
+
+                if tool_calls:
+                    payload["tool_calls"] = tool_calls
+
+                    pending_tool_call_ids = []
+
+                    for tool_call in tool_calls:
+                        tool_call_id = tool_call.get("id")
+
+                        if isinstance(tool_call_id, str):
+                            pending_tool_call_ids.append(tool_call_id)
+
+                    if not pending_tool_call_ids:
+                        raise ValueError(
+                            "El mensaje assistant tiene tool_calls, pero no se pudieron "
+                            "obtener sus ids."
+                        )
+
+            history.append(cast(ChatCompletionMessageParam, payload))
+
+        if pending_tool_call_ids:
+            raise ValueError(
+                "Historial inválido: quedaron tool_calls sin respuesta tool. "
+                f"Tool calls pendientes: {pending_tool_call_ids}"
+            )
 
         return history
 
+    
     def send_chat_message_with_retry(
         self,
         *,
-        client: Client,
+        client: OpenAI,
         model: str,
         history: list[ChatMessage],
         question: str | None = None,
         tools: Sequence[ToolDefinition] | None = None,
         max_retries: int = 3,
-    ) -> ChatResponse:
+    ) -> ChatCompletion:
         messages = self.build_history(history)
 
         if question is not None:
             messages.append(
-                {
-                    "role": "user",
-                    "content": question,
-                }
+                cast(
+                    ChatCompletionMessageParam,
+                    {
+                        "role": "user",
+                        "content": question,
+                    },
+                )
             )
 
         for attempt in range(1, max_retries + 1):
             try:
-                chat_fn: Any = client.chat  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+                extra_body: dict[str, Any] = {}
+
+                if OLLAMA_CHAT_OPTIONS:
+                    extra_body["options"] = OLLAMA_CHAT_OPTIONS
+
+                print("\n========== OLLAMA REQUEST ==========")
+                print(f"Intento: {attempt}/{max_retries}")
+                print(f"Modelo: {model}")
+                print(f"Tools habilitadas: {tools is not None}")
+                print("Mensajes:")
+                print(messages)
+                print("Extra body:")
+                print(extra_body)
+                print("====================================\n")
 
                 if tools is None:
-                    return chat_fn(
+                    chat_completion = client.chat.completions.create(
                         model=model,
                         messages=messages,
-                        stream=False,
-                        options=OLLAMA_CHAT_OPTIONS,
+                        extra_body=extra_body,
+                    )
+                else:
+                    chat_completion = client.chat.completions.create(
+                        model=model,
+                        messages=messages,
+                        tools=cast(Any, tools),
+                        extra_body=extra_body,
                     )
 
-                return chat_fn(
-                    model=model,
-                    messages=messages,
-                    stream=False,
-                    options=OLLAMA_CHAT_OPTIONS,
-                    tools=cast(Any, tools),
-                )
+                print("\n========== OLLAMA RESPONSE ==========")
+                print(chat_completion)
+                print("=====================================\n")
+
+                return chat_completion
 
             except Exception as error:
                 status_code = getattr(error, "status_code", None)
+
+                print("\n========== OLLAMA ERROR ==========")
+                print(f"Intento: {attempt}/{max_retries}")
+                print(f"Status code: {status_code}")
+                print(f"Tipo de error: {type(error).__name__}")
+                print(f"Mensaje: {error}")
+                print("Traceback:")
+                traceback.print_exc()
+                print("==================================\n")
 
                 if status_code not in RETRYABLE_STATUS_CODES:
                     raise
@@ -268,13 +235,12 @@ class OllamaLlmClientAdapter(LlmClientAdapter):
 
         raise RuntimeError("No se pudo completar la consulta a Ollama.")
 
-    def get_response_text(self, response: ChatResponse) -> str:
-        message = getattr(response, "message", None)
 
-        if message is None:
-            raise ValueError("Ollama no devolvió un mensaje de respuesta.")
+    def get_response_text(self, response: ChatCompletion) -> str:
+        if not response.choices:
+            raise ValueError("Ollama no devolvió opciones de respuesta.")
 
-        text = getattr(message, "content", None)
+        text = response.choices[0].message.content
 
         if text is None:
             raise ValueError("Ollama no devolvió contenido de texto.")
@@ -286,40 +252,10 @@ class OllamaLlmClientAdapter(LlmClientAdapter):
 
         return text
 
-    def build_final_response_after_tool(self, tool_name: str) -> str:
-        if tool_name == "record_user_details":
-            return (
-                "Gracias, he enviado la notificación correctamente. "
-                "Te responderé por correo para coordinar el contacto."
-            )
-
-        if tool_name == "record_unknown_question":
-            return (
-                "No tengo ese dato confirmado en este momento. "
-                "Puedo hablarte mejor sobre mi experiencia profesional, "
-                "proyectos o enfoque de desarrollo."
-            )
-
-        return (
-            "No tengo ese dato confirmado en este momento. "
-            "Puedo hablarte mejor sobre mi experiencia profesional, "
-            "proyectos o enfoque de desarrollo."
-        )
-
-    def get_last_tool_name(self, messages: list[ChatMessage]) -> str | None:
-        for message in reversed(messages):
-            if message.get("role") == "tool":
-                tool_name = message.get("name")
-
-                if isinstance(tool_name, str):
-                    return tool_name
-
-        return None
-
     def ask_chat_question(
         self,
         *,
-        client: Client,
+        client: OpenAI,
         model: str,
         messages: list[ChatMessage],
         role: ChatRole,
@@ -330,33 +266,19 @@ class OllamaLlmClientAdapter(LlmClientAdapter):
     ) -> str:
         messages.append({"role": role, "content": question})
 
-        tool_was_executed = False
-
         for _ in range(max_tool_iterations):
-            # Para Ollama, después de ejecutar una tool, la siguiente llamada
-            # debe pedir una respuesta final textual, no permitir otra tool.
-            current_tools = None if tool_was_executed else tools
-
             response = self.send_chat_message_with_retry(
                 client=client,
                 model=model,
                 history=messages,
                 question=None,
-                tools=current_tools,
+                tools=tools,
             )
 
-            tool_calls = self.get_tool_calls(response) if current_tools else None
+            tool_calls = self.get_tool_calls(response)
 
             if not tool_calls:
                 answer = self.get_response_text(response)
-
-                # Si ya se ejecutó una tool y el modelo vuelve a responder con
-                # un JSON de herramienta, no mostramos ese JSON en Gradio.
-                if tool_was_executed and self.parse_synthetic_tool_call(answer):
-                    last_tool_name = self.get_last_tool_name(messages)
-                    answer = self.build_final_response_after_tool(
-                        last_tool_name or ""
-                    )
 
                 messages.append(
                     {
@@ -382,7 +304,6 @@ class OllamaLlmClientAdapter(LlmClientAdapter):
 
             tool_results = handle_tool_calls(tool_calls)
             messages.extend(tool_results)
-            tool_was_executed = True
 
         raise RuntimeError(
             f"Se alcanzó el límite de {max_tool_iterations} iteraciones de tools."

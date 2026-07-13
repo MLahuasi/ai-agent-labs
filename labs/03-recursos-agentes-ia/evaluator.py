@@ -189,7 +189,14 @@ Evalúa si la respuesta es aceptable.
         data = json.loads(clean_json_response(raw_response))
         return Evaluation.model_validate(data)
 
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as error:
+        print("*** Evaluation JSONDecodeError ***")
+        print(f"message: {error.msg}")
+        print(f"line: {error.lineno}")
+        print(f"column: {error.colno}")
+        print(f"position: {error.pos}")
+        print(f"raw_response: {raw_response}")
+
         return Evaluation(
             is_acceptable=False,
             feedback="El evaluador no devolvió JSON válido.",
