@@ -24,6 +24,42 @@ class OpenAILlmClientAdapter(LlmClientAdapter):
         load_openai_api_key()
         return OpenAI()
 
+    def create_embeddings(
+        self,
+        *,
+        client: OpenAI,
+        model: str,
+        texts: list[str],
+    ) -> list[list[float]]:
+        """
+        Genera embeddings utilizando OpenAI.
+    
+        La respuesta específica del SDK se transforma al contrato
+        común esperado por el resto de la aplicación.
+        """
+    
+        if not texts:
+            return []
+    
+        response = client.embeddings.create(
+            model=model,
+            input=texts,
+            encoding_format="float",
+        )
+    
+        # OpenAI incluye el índice original de cada entrada.
+        # Se ordenan los resultados para conservar la misma posición
+        # que tenían los textos recibidos.
+        ordered_embeddings = sorted(
+            response.data,
+            key=lambda item: item.index,
+        )
+    
+        return [
+            item.embedding
+            for item in ordered_embeddings
+        ]
+
     def get_tool_calls(self, response: ChatCompletion) -> Any | None:
         if not response.choices:
             return None

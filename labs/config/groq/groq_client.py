@@ -1,15 +1,26 @@
 import sys
 import time
+
 from pathlib import Path
 from typing import Any, Sequence, cast
 
 from openai import OpenAI
-from openai.types.chat import ChatCompletion, ChatCompletionMessageParam
+from openai.types.chat import (
+    ChatCompletion,
+    ChatCompletionMessageParam,
+)
+
 
 LABS_DIR = Path(__file__).resolve().parents[2]
+
 sys.path.insert(0, str(LABS_DIR))
 
-from config.groq.config import GROQ_BASE_URL, RETRYABLE_STATUS_CODES, load_groq_api_key
+
+from config.groq.config import (
+    GROQ_BASE_URL,
+    RETRYABLE_STATUS_CODES,
+    load_groq_api_key,
+)
 from config.shared.llm_client import (
     HandleToolCalls,
     LlmClientAdapter,
@@ -21,17 +32,60 @@ from config.shared.types import ChatMessage, ChatRole
 
 class GroqLlmClientAdapter(LlmClientAdapter):
     def create_client(self) -> OpenAI:
+        """
+        Crea un cliente OpenAI compatible configurado
+        para utilizar la API de Groq.
+        """
+
         return OpenAI(
             api_key=load_groq_api_key(),
             base_url=GROQ_BASE_URL,
         )
 
-    def get_tool_calls(self, response: ChatCompletion) -> Any | None:
+    def create_embeddings(
+        self,
+        *,
+        client: OpenAI,
+        model: str,
+        texts: list[str],
+    ) -> list[list[float]]:
+        """
+        Indica explícitamente que este adapter no genera embeddings.
+
+        Groq se utiliza como proveedor de chat. Para implementar RAG,
+        se debe utilizar otro adapter que soporte embeddings, como
+        OpenAI, Gemini u Ollama.
+        """
+
+        # Los parámetros forman parte del contrato LlmClientAdapter.
+        # No se utilizan porque este adapter no implementa embeddings.
+        del client
+        del model
+        del texts
+
+        raise NotImplementedError(
+            "GroqLlmClientAdapter no soporta generación de embeddings. "
+            "Configura un adapter independiente para el flujo RAG."
+        )
+
+    def get_tool_calls(
+        self,
+        response: ChatCompletion,
+    ) -> Any | None:
+        """
+        Obtiene las llamadas a tools generadas por Groq.
+        """
+
         if not response.choices:
             return None
 
         message = response.choices[0].message
-        tool_calls = getattr(message, "tool_calls", None)
+
+        tool_calls = getattr(
+            message,
+            "tool_calls",
+            None,
+        )
 
         if not tool_calls:
             return None
@@ -45,22 +99,42 @@ class GroqLlmClientAdapter(LlmClientAdapter):
         response: ChatCompletion,
         model: str,
     ) -> None:
+        """
+        Agrega al historial la solicitud de ejecución
+        de tools generada por Groq.
+        """
+
         if not response.choices:
-            raise ValueError("Groq no devolvió opciones de respuesta.")
-    
+            raise ValueError(
+                "Groq no devolvió opciones de respuesta."
+            )
+
         message = response.choices[0].message
+
         tool_calls = message.tool_calls or []
-    
-        serializable_tool_calls: list[dict[str, Any]] = []
-    
+
+        serializable_tool_calls: list[
+            dict[str, Any]
+        ] = []
+
         for tool_call in tool_calls:
-            if hasattr(tool_call, "model_dump"):
+            if hasattr(
+                tool_call,
+                "model_dump",
+            ):
                 serializable_tool_calls.append(
-                    tool_call.model_dump(exclude_none=True)
+                    tool_call.model_dump(
+                        exclude_none=True
+                    )
                 )
             else:
-                serializable_tool_calls.append(cast(dict[str, Any], tool_call))
-    
+                serializable_tool_calls.append(
+                    cast(
+                        dict[str, Any],
+                        tool_call,
+                    )
+                )
+
         messages.append(
             {
                 "role": "assistant",
@@ -74,28 +148,58 @@ class GroqLlmClientAdapter(LlmClientAdapter):
         self,
         messages: list[ChatMessage],
     ) -> list[ChatCompletionMessageParam]:
-        history: list[ChatCompletionMessageParam] = []
+        """
+        Convierte el historial común al formato
+        compatible con la API de Groq.
+        """
+
+        history: list[
+            ChatCompletionMessageParam
+        ] = []
 
         for message in messages:
-            role = normalize_chat_role(message["role"])
+            role = normalize_chat_role(
+                message["role"]
+            )
 
             payload: dict[str, Any] = {
                 "role": role,
-                "content": message.get("content"),
+                "content": message.get(
+                    "content"
+                ),
             }
 
             if role == "tool":
-                tool_call_id = message.get("tool_call_id")
+                tool_call_id = message.get(
+                    "tool_call_id"
+                )
 
                 if tool_call_id is None:
-                    raise ValueError("El mensaje con role='tool' no tiene tool_call_id.")
+                    raise ValueError(
+                        "El mensaje con role='tool' "
+                        "no tiene tool_call_id."
+                    )
 
-                payload["tool_call_id"] = tool_call_id
+                payload[
+                    "tool_call_id"
+                ] = tool_call_id
 
-            if role == "assistant" and "tool_calls" in message:
-                payload["tool_calls"] = message["tool_calls"]
+            if (
+                role == "assistant"
+                and "tool_calls" in message
+            ):
+                payload[
+                    "tool_calls"
+                ] = message[
+                    "tool_calls"
+                ]
 
-            history.append(cast(ChatCompletionMessageParam, payload))
+            history.append(
+                cast(
+                    ChatCompletionMessageParam,
+                    payload,
+                )
+            )
 
         return history
 
@@ -106,10 +210,20 @@ class GroqLlmClientAdapter(LlmClientAdapter):
         model: str,
         history: list[ChatMessage],
         question: str | None = None,
-        tools: Sequence[ToolDefinition] | None = None,
+        tools: Sequence[
+            ToolDefinition
+        ]
+        | None = None,
         max_retries: int = 3,
     ) -> ChatCompletion:
-        messages = self.build_history(history)
+        """
+        Envía una consulta a Groq aplicando reintentos
+        cuando ocurre un error temporal.
+        """
+
+        messages = self.build_history(
+            history
+        )
 
         if question is not None:
             messages.append(
@@ -122,54 +236,107 @@ class GroqLlmClientAdapter(LlmClientAdapter):
                 )
             )
 
-        for attempt in range(1, max_retries + 1):
+        for attempt in range(
+            1,
+            max_retries + 1,
+        ):
             try:
                 if tools is None:
-                    return client.chat.completions.create(
-                        model=model,
-                        messages=messages,
+                    return (
+                        client
+                        .chat
+                        .completions
+                        .create(
+                            model=model,
+                            messages=messages,
+                        )
                     )
 
-                return client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    tools=cast(Any, tools),
+                return (
+                    client
+                    .chat
+                    .completions
+                    .create(
+                        model=model,
+                        messages=messages,
+                        tools=cast(
+                            Any,
+                            tools,
+                        ),
+                    )
                 )
 
             except Exception as error:
-                status_code = getattr(error, "status_code", None)
+                status_code = getattr(
+                    error,
+                    "status_code",
+                    None,
+                )
 
-                if status_code not in RETRYABLE_STATUS_CODES:
+                if (
+                    status_code
+                    not in RETRYABLE_STATUS_CODES
+                ):
                     raise
 
                 if attempt == max_retries:
                     raise RuntimeError(
-                        f"Groq no respondió después de {max_retries} intentos. "
-                        f"Último error: {status_code}"
+                        "Groq no respondió después "
+                        f"de {max_retries} intentos. "
+                        "Último error: "
+                        f"{status_code}"
                     ) from error
 
                 wait_seconds = 2**attempt
+
                 print(
-                    f"Groq ocupado o con error temporal [{status_code}]. "
-                    f"Reintentando en {wait_seconds}s..."
+                    "Groq ocupado o con error temporal "
+                    f"[{status_code}]. "
+                    "Reintentando en "
+                    f"{wait_seconds}s..."
                 )
-                time.sleep(wait_seconds)
 
-        raise RuntimeError("No se pudo completar la consulta a Groq.")
+                time.sleep(
+                    wait_seconds
+                )
 
-    def get_response_text(self, response: ChatCompletion) -> str:
+        raise RuntimeError(
+            "No se pudo completar "
+            "la consulta a Groq."
+        )
+
+    def get_response_text(
+        self,
+        response: ChatCompletion,
+    ) -> str:
+        """
+        Obtiene el contenido de texto
+        desde una respuesta de Groq.
+        """
+
         if not response.choices:
-            raise ValueError("Groq no devolvió opciones de respuesta.")
+            raise ValueError(
+                "Groq no devolvió opciones de respuesta."
+            )
 
-        text = response.choices[0].message.content
+        text = (
+            response
+            .choices[0]
+            .message
+            .content
+        )
 
         if text is None:
-            raise ValueError("Groq no devolvió contenido de texto.")
+            raise ValueError(
+                "Groq no devolvió contenido de texto."
+            )
 
         text = text.strip()
 
         if not text:
-            raise ValueError("Groq devolvió una respuesta vacía.")
+            raise ValueError(
+                "Groq devolvió una respuesta vacía."
+            )
 
         return text
 
@@ -181,25 +348,53 @@ class GroqLlmClientAdapter(LlmClientAdapter):
         messages: list[ChatMessage],
         role: ChatRole,
         question: str,
-        tools: Sequence[ToolDefinition] | None = None,
-        handle_tool_calls: HandleToolCalls | None = None,
+        tools: Sequence[
+            ToolDefinition
+        ]
+        | None = None,
+        handle_tool_calls: (
+            HandleToolCalls
+            | None
+        ) = None,
         max_tool_iterations: int = 5,
     ) -> str:
-        messages.append({"role": role, "content": question})
+        """
+        Ejecuta el flujo completo de conversación
+        y procesa las tools solicitadas por Groq.
+        """
 
-        for _ in range(max_tool_iterations):
-            response = self.send_chat_message_with_retry(
-                client=client,
-                model=model,
-                history=messages,
-                question=None,
-                tools=tools,
+        messages.append(
+            {
+                "role": role,
+                "content": question,
+            }
+        )
+
+        for _ in range(
+            max_tool_iterations
+        ):
+            response = (
+                self.send_chat_message_with_retry(
+                    client=client,
+                    model=model,
+                    history=messages,
+                    question=None,
+                    tools=tools,
+                )
             )
 
-            tool_calls = self.get_tool_calls(response)
+            tool_calls = (
+                self.get_tool_calls(
+                    response
+                )
+            )
 
             if not tool_calls:
-                answer = self.get_response_text(response)
+                answer = (
+                    self.get_response_text(
+                        response
+                    )
+                )
 
                 messages.append(
                     {
@@ -213,7 +408,8 @@ class GroqLlmClientAdapter(LlmClientAdapter):
 
             if handle_tool_calls is None:
                 raise RuntimeError(
-                    "El modelo solicitó tool calls, pero no se proporcionó "
+                    "El modelo solicitó tool calls, "
+                    "pero no se proporcionó "
                     "handle_tool_calls."
                 )
 
@@ -223,9 +419,19 @@ class GroqLlmClientAdapter(LlmClientAdapter):
                 model=model,
             )
 
-            tool_results = handle_tool_calls(tool_calls)
-            messages.extend(tool_results)
+            tool_results = (
+                handle_tool_calls(
+                    tool_calls
+                )
+            )
+
+            messages.extend(
+                tool_results
+            )
 
         raise RuntimeError(
-            f"Se alcanzó el límite de {max_tool_iterations} iteraciones de tools."
+            "Se alcanzó el límite de "
+            f"{max_tool_iterations} "
+            "iteraciones de tools."
         )
+
