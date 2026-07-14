@@ -1,4 +1,3 @@
-#  Usar el prompt RAG durante el turno sin contaminar el historial
 from __future__ import annotations
 
 from pathlib import Path
@@ -6,54 +5,125 @@ from typing import Any, Sequence
 
 from config.shared.llm_client import (
     HandleToolCalls,
+)
+from config.shared.question import (
+    AskChatQuestion,
+)
+from config.shared.types import (
+    ChatMessage,
+    ChatTurnResult,
     ToolDefinition,
 )
-from config.shared.question import AskChatQuestion
-from config.shared.types import ChatMessage
 
-from tools.history import save_history
-from tools.response import evaluate_response, rerun_response
+from prompts.system import (
+    CONTACT_SUCCESS_RESPONSE,
+    UNKNOWN_QUESTION_RESPONSE,
+)
+
+from tools.history import (
+    save_history,
+)
+
+from tools.response import (
+    evaluate_response,
+    rerun_response,
+)
 
 
-def last_response_used_tool(history: list[ChatMessage]) -> bool:
-    """Determina si el turno actual ejecutó alguna tool."""
-    recent_messages = history[-6:]
+def resolve_post_tool_response(
+    turn_result: ChatTurnResult,
+) -> str:
+    """
+    Aplica respuestas contractuales después de herramientas exitosas.
 
-    return any(
-        item.get("role") == "tool" or bool(item.get("tool_calls"))
-        for item in recent_messages
+    Esta lógica pertenece al chatbot y no a los adapters porque conoce
+    herramientas específicas del dominio.
+
+    El adapter solamente informa:
+    - herramientas solicitadas;
+    - herramientas ejecutadas correctamente.
+    """
+
+    successful_tools = set(
+        turn_result[
+            "successful_tool_names"
+        ]
     )
+
+    # Mantiene la prioridad definida por las reglas
+    # del chatbot.
+    if (
+        "record_user_details"
+        in successful_tools
+    ):
+        return (
+            CONTACT_SUCCESS_RESPONSE
+        )
+
+    if (
+        "record_unknown_question"
+        in successful_tools
+    ):
+        return (
+            UNKNOWN_QUESTION_RESPONSE
+        )
+
+    # Las herramientas que no tengan una respuesta contractual
+    # conservan el texto generado por el modelo.
+    return turn_result[
+        "content"
+    ]
 
 
 def remove_last_tool_interaction(
     history: list[ChatMessage],
 ) -> None:
     """
-    Elimina la información técnica de tool calling.
+    Elimina mensajes técnicos de tool calling.
 
-    Se conservan únicamente los mensajes visibles para el usuario.
+    El historial persistido conserva únicamente la conversación
+    visible para el usuario.
     """
 
-    cleaned_history: list[ChatMessage] = []
+    cleaned_history: list[
+        ChatMessage
+    ] = []
 
     for item in history:
-        role = item.get("role")
+        role = item.get(
+            "role"
+        )
 
         if role == "tool":
             continue
 
-        if role == "assistant" and item.get("tool_calls"):
+        if (
+            role == "assistant"
+            and item.get(
+                "tool_calls"
+            )
+        ):
             continue
 
-        content = item.get("content")
+        content = item.get(
+            "content"
+        )
 
-        if role == "assistant" and content is None:
+        if (
+            role == "assistant"
+            and content is None
+        ):
             continue
 
-        cleaned_history.append(item)
+        cleaned_history.append(
+            item
+        )
 
     history.clear()
-    history.extend(cleaned_history)
+
+    history.extend(
+        cleaned_history
+    )
 
 
 def replace_last_assistant_message(
@@ -62,13 +132,27 @@ def replace_last_assistant_message(
     model: str,
     reply: str,
 ) -> None:
-    """Reemplaza la respuesta rechazada por la respuesta corregida."""
-    for index in range(len(history) - 1, -1, -1):
+    """
+    Reemplaza la última respuesta visible del asistente.
+
+    Se utiliza después de:
+    - aplicar respuestas contractuales;
+    - regenerar una respuesta rechazada.
+    """
+
+    for index in range(
+        len(history) - 1,
+        -1,
+        -1,
+    ):
         item = history[index]
 
         if (
-            item.get("role") == "assistant"
-            and not item.get("tool_calls")
+            item.get("role")
+            == "assistant"
+            and not item.get(
+                "tool_calls"
+            )
         ):
             history[index] = {
                 "role": "assistant",
@@ -86,33 +170,54 @@ def replace_last_assistant_message(
         }
     )
 
+
 def replace_system_prompt(
     history: list[ChatMessage],
     system_prompt: str,
 ) -> str:
     """
-    Reemplaza temporalmente el prompt base por el prompt del turno.
-
-    El nuevo prompt contiene únicamente el contexto recuperado
-    para la consulta actual.
+    Reemplaza temporalmente el prompt base por el prompt RAG
+    correspondiente al turno actual.
     """
 
     if not history:
-        raise ValueError("El historial no contiene system prompt.")
-
-    if history[0].get("role") != "system":
         raise ValueError(
-            "El primer mensaje del historial debe tener role='system'."
+            "El historial no contiene "
+            "un system prompt."
         )
 
-    original_system_prompt = history[0].get("content")
+    if (
+        history[0].get(
+            "role"
+        )
+        != "system"
+    ):
+        raise ValueError(
+            "El primer mensaje del historial "
+            "debe tener role='system'."
+        )
 
-    if not isinstance(original_system_prompt, str):
-        raise ValueError("El system prompt almacenado no es válido.")
+    original_system_prompt = (
+        history[0].get(
+            "content"
+        )
+    )
 
-    history[0]["content"] = system_prompt
+    if not isinstance(
+        original_system_prompt,
+        str,
+    ):
+        raise ValueError(
+            "El system prompt almacenado "
+            "no es válido."
+        )
+
+    history[0]["content"] = (
+        system_prompt
+    )
 
     return original_system_prompt
+
 
 def chat(
     ask_chat_question: AskChatQuestion,
@@ -124,77 +229,167 @@ def chat(
     data_dir: Path,
     history_file: Path,
     message: str,
-    _gradio_history: list[dict[str, Any]],
-    tools: Sequence[ToolDefinition] | None = None,
-    handle_tool_calls: HandleToolCalls | None = None,
+    _gradio_history: list[
+        dict[str, Any]
+    ],
+    tools: Sequence[
+        ToolDefinition
+    ]
+    | None = None,
+    handle_tool_calls: (
+        HandleToolCalls
+        | None
+    ) = None,
 ) -> str:
     """
-    Ejecuta el flujo existente usando el contexto RAG del turno.
+    Ejecuta el flujo conversacional.
 
-    Las tools se mantienen sin cambios.
-    El system prompt dinámico se restaura antes de persistir
-    el historial para no almacenar fragmentos recuperados.
+    Todos los adapters retornan ChatTurnResult.
+
+    No existe detección legacy mediante inspección del historial.
     """
-    original_system_prompt = replace_system_prompt(
-        history,
-        system_prompt,
+
+    original_system_prompt = (
+        replace_system_prompt(
+            history,
+            system_prompt,
+        )
     )
 
     try:
-        reply = ask_chat_question(
-            client=client,
-            model=model,
-            messages=history,
-            role="user",
-            question=message,
-            tools=tools,
-            handle_tool_calls=handle_tool_calls,
+        turn_result = (
+            ask_chat_question(
+                client=client,
+                model=model,
+                messages=history,
+                role="user",
+                question=message,
+                tools=tools,
+                handle_tool_calls=(
+                    handle_tool_calls
+                ),
+            )
         )
 
-        if last_response_used_tool(history):
+        reply = turn_result[
+            "content"
+        ]
+
+        if turn_result[
+            "used_tools"
+        ]:
+            reply = (
+                resolve_post_tool_response(
+                    turn_result
+                )
+            )
+
+            replace_last_assistant_message(
+                history=history,
+                model=model,
+                reply=reply,
+            )
+
+            if turn_result[
+                "tool_names"
+            ]:
+                print(
+                    "Tools solicitadas: "
+                    + ", ".join(
+                        turn_result[
+                            "tool_names"
+                        ]
+                    )
+                )
+
+            if turn_result[
+                "successful_tool_names"
+            ]:
+                print(
+                    "Tools ejecutadas "
+                    "correctamente: "
+                    + ", ".join(
+                        turn_result[
+                            "successful_tool_names"
+                        ]
+                    )
+                )
+
             print(
-                "Respuesta generada después de ejecutar tool. "
+                "Iteraciones de tools: "
+                f"{turn_result['tool_iterations']}"
+            )
+
+            print(
+                "Respuesta generada después "
+                "de ejecutar tool. "
                 "Se omite evaluación."
             )
 
-            remove_last_tool_interaction(history)
+            remove_last_tool_interaction(
+                history
+            )
 
             return reply
-        
-        evaluation = evaluate_response(
-            ask_chat_question=ask_chat_question,
-            client=client,
-            model=model,
-            evaluator_prompt=evaluator_prompt,
-            reply=reply,
-            message=message,
-            history=history
+
+        evaluation = (
+            evaluate_response(
+                ask_chat_question=(
+                    ask_chat_question
+                ),
+                client=client,
+                model=model,
+                evaluator_prompt=(
+                    evaluator_prompt
+                ),
+                reply=reply,
+                message=message,
+                history=history,
+            )
         )
 
         print(
-            f"Evaluación: acceptable: "
+            "Evaluación: acceptable: "
             f"{evaluation.is_acceptable} "
-            f"- feedback: {evaluation.feedback}"
+            "- feedback: "
+            f"{evaluation.feedback}"
         )
 
         if evaluation.is_acceptable:
-            print("Evaluación aprobada.")
+            print(
+                "Evaluación aprobada."
+            )
 
             return reply
 
-        print("Evaluación rechazada.")
-        print(evaluation.feedback)
-        print(f"Reintentando respuesta con modelo {model}...")
+        print(
+            "Evaluación rechazada."
+        )
+
+        print(
+            evaluation.feedback
+        )
+
+        print(
+            "Reintentando respuesta "
+            f"con modelo {model}..."
+        )
 
         reply = rerun_response(
             client=client,
-            ask_chat_question=ask_chat_question,
+            ask_chat_question=(
+                ask_chat_question
+            ),
             model=model,
-            system_prompt=system_prompt,
+            system_prompt=(
+                system_prompt
+            ),
             history=history,
             message=message,
             previous_reply=reply,
-            feedback=evaluation.feedback,
+            feedback=(
+                evaluation.feedback
+            ),
         )
 
         replace_last_assistant_message(
@@ -204,11 +399,13 @@ def chat(
         )
 
         return reply
-    
+
     finally:
-        # El historial conserva un prompt estable.
-        # Los fragmentos RAG no se almacenan entre conversaciones.
-        history[0]["content"] = original_system_prompt
+        # Los fragmentos RAG del turno no se conservan
+        # en el historial persistido.
+        history[0]["content"] = (
+            original_system_prompt
+        )
 
         save_history(
             history=history,

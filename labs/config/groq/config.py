@@ -4,7 +4,10 @@ from dotenv import load_dotenv
 
 
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
-GROQ_DEFAULT_MODEL = "llama-3.3-70b-versatile"
+
+GROQ_DEFAULT_MODEL = (
+    "llama-3.3-70b-versatile"
+)
 
 
 def load_groq_api_key() -> str:

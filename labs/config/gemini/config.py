@@ -1,28 +1,45 @@
 import os
 
 from dotenv import load_dotenv
-from google.genai import types
 
 
 def load_gemini_api_key() -> str:
-    load_dotenv(override=True)
+    """
+    Carga la API key utilizada por Gemini.
 
-    api_key = os.getenv("GEMINI_API_KEY")
+    La validación permanece en la configuración del proveedor
+    y no se filtra hacia la lógica del chatbot.
+    """
+
+    load_dotenv(
+        override=True
+    )
+
+    api_key = os.getenv(
+        "GEMINI_API_KEY"
+    )
 
     if not api_key:
-        raise RuntimeError("La variable GEMINI_API_KEY no existe en .env")
+        raise RuntimeError(
+            "La variable GEMINI_API_KEY "
+            "no existe en .env"
+        )
 
     return api_key
 
 
-GEMINI_GENERATION_CONFIG = types.GenerateContentConfig(
-    max_output_tokens=150,
-    temperature=0.4,
+# Solo se reintentan errores temporales del proveedor.
+#
+# Los errores de validación, historial o programación
+# deben propagarse inmediatamente.
+RETRYABLE_STATUS_CODES: frozenset[int] = (
+    frozenset(
+        {
+            429,
+            500,
+            502,
+            503,
+            504,
+        }
+    )
 )
-
-RETRYABLE_STATUS_CODES: frozenset[int] = frozenset({
-    500,
-    502,
-    503,
-    504,
-})

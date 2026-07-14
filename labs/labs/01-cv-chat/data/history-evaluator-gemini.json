@@ -5,16 +5,16 @@
     },
     {
         "role": "assistant",
-        "model": "gemini-2.5-flash-lite",
+        "model": "gemini-3-flash-preview",
         "content": "Hola, soy Mauricio Lahuasi. ¿En qué te puedo ayudar?"
     },
     {
         "role": "user",
-        "content": "Como se llama tu abuelo paterno?"
+        "content": "como se llama tu primera profesora del jardín de infantes?"
     },
     {
         "role": "assistant",
-        "model": "gemini-2.5-flash-lite",
+        "model": "gemini-3-flash-preview",
         "content": "No tengo ese dato confirmado en este momento. Puedo hablarte mejor sobre mi experiencia profesional, proyectos o enfoque de desarrollo."
     },
     {
@@ -23,43 +23,43 @@
     },
     {
         "role": "assistant",
-        "model": "gemini-2.5-flash-lite",
-        "content": "Claro, en cuanto a mis habilidades técnicas, tengo experiencia en:\n\n**Backend:** C#, .NET Framework, .NET Core, ASP.NET Core, ASP.NET MVC, Web API, Node.js, TypeScript, Express.js, NestJS, REST APIs, SOAP Web Services, LINQ.\n\n**Frontend y aplicaciones:** React.js, Next.js, React Native, JavaScript, HTML, CSS.\n\n**Arquitectura y diseño:** Software Architecture, Clean Architecture, Arquitectura Hexagonal, Domain-Driven Design (DDD), SOLID, Clean Code, CQRS, patrones de diseño, diseño modular, diseño orientado a mantenibilidad, Microservices.\n\n**Bases de datos y persistencia:** SQL Server, PostgreSQL"
+        "model": "gemini-3-flash-preview",
+        "content": "Claro, te comparto un resumen de mis competencias técnicas y las tecnologías con"
     },
     {
         "role": "user",
-        "content": "Puedes darme un resumen de tus soft skills?"
+        "content": "dame un resumen de tus soft skills?"
     },
     {
         "role": "assistant",
-        "model": "gemini-2.5-flash-lite",
-        "content": "En cuanto a mis habilidades interpersonales, me considero una persona con atención al detalle y una búsqueda constante de calidad. Tiendo a anticipar problemas potenciales para reducir errores y asegurar que las soluciones funcionen de manera confiable a largo plazo. Me siento cómodo enfrentando desafíos complejos y disfruto descomponerlos en partes manejables hasta encontrar una solución clara y práctica.\n\nA lo largo de mi trayectoria he desarrollado una fuerte orientación al aprendizaje continuo. Disfruto explorar nuevas herramientas, patrones, metodologías y tecnologías que me permitan mejorar como profesional y construir software más robusto, escalable y sostenible. La curiosidad intelectual ha sido una constante tanto en mi vida profesional como personal.\n\nAunque suelo ser una persona reservada y más cómoda en"
+        "model": "gemini-3-flash-preview",
+        "content": "Me considero una persona con una fuerte atención al detalle y una búsqueda constante"
     },
     {
         "role": "user",
-        "content": "Cuales son tus hobbies?"
+        "content": "cuales son tus hobbies?"
     },
     {
         "role": "assistant",
-        "model": "gemini-2.5-flash-lite",
-        "content": "Disfruto de una variedad de actividades fuera del ámbito profesional. Me apasiona la música, aprendí a tocar guitarra de forma autodidacta y sigo ampliando mis conocimientos musicales, incluyendo el canto y la teoría musical en un coro. También practico running de forma regular y complemento con entrenamiento funcional. Además, mantengo interés en disciplinas como el Tai Chi, que me ayudan a desarrollar equilibrio y concentración. En mi tiempo libre, también disfruto de series y películas, especialmente de fantasía épica y ciencia ficción."
+        "model": "gemini-3-flash-preview",
+        "content": "Fuera del desarrollo de software, dedico mi tiempo a varias actividades que reflejan mi interés por la disciplina y el progreso gradual:\n\n*   **Música:** Es una de mis grandes afinidades. Aprendí a tocar la guitarra de forma autodidacta y actualmente formo parte de un coro, donde sigo desarrollando habilidades vocales y aprendiendo teoría"
     },
     {
         "role": "user",
-        "content": "Como puedo contactarme contigo?"
+        "content": "Como me contacto contigo?"
     },
     {
         "role": "assistant",
-        "model": "gemini-2.5-flash-lite",
-        "content": "Puedes contactarme a través de mi perfil de LinkedIn, mi repositorio público de GitHub o mi correo electrónico:\n\nLinkedIn: linkedin.com/in/josé-mauricio-lahuasi-quillupangui-1b660874\nGitHub: https://github.com/MLahuasi\nEmail: jmlahuasiq@gmail.com\n\nSi lo deseas, puedes dejarme tu nombre, correo electrónico y el motivo de tu contacto."
+        "model": "gemini-3-flash-preview",
+        "content": "Puedes contactarme a través de los siguientes canales:\n\n*   **LinkedIn:** [linkedin.com/in/josé-mauricio-lahuasi-quillupangui-1b660874](https://www.linkedin.com/in/josé-mauricio-lahuasi-quillupangui-1b660874)\n*   **GitHub:** [https://github.com/MLahuasi](https://github.com/MLahuasi)\n*   **Email:** [jmlahuasiq@gmail.com](mailto:jmlahuasiq@gmail.com)\n\nSi lo prefieres, puedes dejarme tu nombre, correo electrónico y el motivo de tu contacto por aquí para que podamos conversar."
     },
     {
         "role": "user",
-        "content": "Mi nombre es Mauricio, jmlq@gmail.com, quiero analizar tu disponibilidad, servicios y costos"
+        "content": "Mi nombre Mauro, jmlq@hotmail.com, quiero una proforma"
     },
     {
         "role": "assistant",
-        "model": "gemini-2.5-flash-lite",
+        "model": "gemini-3-flash-preview",
         "content": "Gracias, me comunicaré contigo pronto."
     }
 ]

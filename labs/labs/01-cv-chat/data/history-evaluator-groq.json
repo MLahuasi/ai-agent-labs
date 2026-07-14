@@ -5,35 +5,35 @@
     },
     {
         "role": "assistant",
-        "model": "llama-3.1-8b-instant",
+        "model": "llama-3.3-70b-versatile",
         "content": "Hola, soy Mauricio Lahuasi. ¿En qué te puedo ayudar?"
     },
     {
         "role": "user",
-        "content": "Como se llama tu abuelo paterno?"
+        "content": "Como se llama tu mascota?"
     },
     {
         "role": "assistant",
-        "model": "llama-3.1-8b-instant",
+        "model": "llama-3.3-70b-versatile",
         "content": "No tengo ese dato confirmado en este momento. Puedo hablarte mejor sobre mi experiencia profesional, proyectos o enfoque de desarrollo."
     },
     {
         "role": "user",
-        "content": "puedes darme un resumen acerca de tus hard skills?"
+        "content": "Dame un resumen de tus hard skills?"
     },
     {
         "role": "assistant",
-        "model": "llama-3.1-8b-instant",
-        "content": "Disfruto desarrollar soluciones en backend utilizando tecnologías como C#, .NET Framework, .NET Core, ASP.NET Core, ASP.NET MVC y Web API. También tengo experiencia con Node.js, TypeScript, Express.js y NestJS, y manejo de APIs RESTful.\n\nEn cuanto a bases de datos, tengo habilidades en SQL Server, PostgreSQL, MongoDB, MySQL y Oracle Database, y he trabajado con Entity Framework, EF Core y TypeORM.\n\nAdemás, tengo conocimientos en seguridad, integración y operación, como JWT, JOSE, Refresh Tokens y RBAC, y en DevOps, herramientas como Docker, Docker Hub, Git, GitHub, GitHub Actions, CI/CD y Swagger.\n\nAunque mi experiencia es más detallada en desarrollo backend, tengo una orientación general hacia tecnologías y patrones que permitan construir soluciones sostenibles, escalables y de calidad."
+        "model": "llama-3.3-70b-versatile",
+        "content": "Mis hard skills incluyen tecnologías y capacidades en backend como C#, .NET Framework, .NET Core, ASP.NET Core, ASP.NET MVC, Web API, Node.js, TypeScript, Express.js, NestJS, REST APIs, SOAP Web Services, LINQ. También tengo habilidades en frontend y aplicaciones con React.js, Next.js, React Native, JavaScript, HTML, CSS. Además, tengo conocimientos en arquitectura y diseño de software, bases de datos y persistencia, DevOps, herramientas y calidad, seguridad, integración y operación."
     },
     {
         "role": "user",
-        "content": "Puedes darme un resumen de tus soft skills?"
+        "content": "Dame un resumen de tus soft skills?"
     },
     {
         "role": "assistant",
-        "model": "llama-3.1-8b-instant",
-        "content": "Soy una persona enfocada en el detalle y con una búsqueda constante de calidad. Me gusta anticipar problemas potenciales para reducir errores y asegurar que las soluciones funcionen de manera confiable a largo plazo.\n\nMe siento cómodo enfrentando desafíos complejos y disfruto descomponerlos en partes manejables hasta encontrar una solución clara y práctica. Este enfoque me permite trabajar de manera efectiva en entornos de gran exposición, pero también me hace valuar profundamente la colaboración y el trabajo en equipo.\n\nDisfruto compartir conocimientos, ayudar a resolver problemas y aprender de otras personas. Esta actitud me ha permitido mantener una fuerte orientación al aprendizaje continuo y explorar nuevas herramientas, patrones y tecnologías para mejorar como profesional y construir software más robusto, escalable y sostenible.\n\nAdemás, soy una persona que valora la comunicación clara y la responsabilidad profesional, y estoy comprometido con la continuidad operativa."
+        "model": "llama-3.3-70b-versatile",
+        "content": "Mis soft skills incluyen habilidades como análisis y resolución de problemas complejos, comunicación clara con usuarios, equipos técnicos y áreas funcionales, liderazgo técnico, coordinación de entregables y trabajo con equipos multidisciplinarios. También tengo responsabilidad profesional, manejo de información confidencial y orientación a la continuidad operativa. Además, me caracterizo por un aprendizaje permanente, adaptabilidad tecnológica y enfoque en soluciones simples, sostenibles y mantenibles."
     },
     {
         "role": "user",
@@ -41,34 +41,25 @@
     },
     {
         "role": "assistant",
-        "model": "llama-3.1-8b-instant",
-        "content": "Me apasiona la música y disfruto tocando la guitarra de forma autodidacta. Además, me gusta cantar y formo parte de un coro, donde sigo desarrollando habilidades vocales mientras aprendo lectura musical y teoría musical. La música representa para mí un espacio de aprendizaje, disciplina, sensibilidad artística, trabajo en equipo y crecimiento personal.\n\nTambién disfruto de la actividad física y el deporte. Practico running de forma regular y uno de mis objetivos es completar mi primera media maratón (21K) el próximo año. Complemento esta actividad con entrenamiento funcional y mantengo interés por disciplinas como el Tai Chi, que me ayudan a desarrollar equilibrio, coordinación, concentración y bienestar físico.\n\nEs un equilibrio saludable donde combino la práctica constante con la paciencia y la mejora continua, al igual que me ocurre en la música y en el desarrollo de software."
+        "model": "llama-3.3-70b-versatile",
+        "content": "Mis hobbies incluyen la música, específicamente tocar la guitarra y cantar. También disfruto del deporte y la actividad física, como el running y el entrenamiento funcional. Además, me interesa el Tai Chi, que me ayuda a desarrollar equilibrio, coordinación y concentración. Me gusta combinar disciplina, técnica y progreso en mis actividades."
     },
     {
         "role": "user",
-        "content": "Como puedo contactarme contigo?"
+        "content": "como me contacto contigo?"
     },
     {
         "role": "assistant",
-        "model": "llama-3.1-8b-instant",
-        "content": "Puedes contactarte conmigo a través de mi perfil de LinkedIn (linkedin.com/in/josé-mauricio-lahuasi-quillupangui-1b660874) o de mi correo electrónico (jmlahuasiq@gmail.com). También puedes conocer más sobre mi trabajo en mi repositorio público de GitHub (https://github.com/MLahuasi)."
+        "model": "llama-3.3-70b-versatile",
+        "content": "Puedes contactarme a través de mi perfil de LinkedIn: https://www.linkedin.com/in/josé-mauricio-lahuasi-quillupangui-1b660874/, mi repositorio público de GitHub: https://github.com/MLahuasi, o enviándome un correo electrónico a jmlahuasiq@gmail.com. Estoy aquí para ayudarte con cualquier consulta o proyecto que necesites."
     },
     {
         "role": "user",
-        "content": "quiero una comunicación mas directa, que puedo hacer?"
+        "content": "Mi nombre es Mauricio Lahuasi, mi correo es jmlq@gmail.com, Quiero analizar un presupuesto"
     },
     {
         "role": "assistant",
-        "model": "llama-3.1-8b-instant",
-        "content": "Puedes dejar tu nombre, correo electrónico y motivo de consulta en mi perfil de LinkedIn, y así puedo tener una conversación más directa contigo. De esta manera, puedo responder mejor a tus necesidades y conocerte mejor."
-    },
-    {
-        "role": "user",
-        "content": "Mauricio, jmlq@gmail.com, quiero una cotización de servicios"
-    },
-    {
-        "role": "assistant",
-        "model": "llama-3.1-8b-instant",
-        "content": "Gracias por proporcionar tu correo electrónico. Puedo hacer una cotización de servicios personalizados para ti.\n\n record_user_details>{\"email\": \"jmlq@gmail.com\", \"name\": \"Mauricio\", \"notes\": \"Cotización de servicios personalizados\"}</function>\n\nGracias, me comunicaré contigo pronto."
+        "model": "llama-3.3-70b-versatile",
+        "content": "Gracias, me comunicaré contigo pronto."
     }
 ]

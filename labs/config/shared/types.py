@@ -1,5 +1,9 @@
 from typing import Any, Literal, NotRequired, Protocol, TypedDict
+
+
+# -------------------------------------------------------------------------
 # Chat
+# -------------------------------------------------------------------------
 
 ChatRole = Literal[
     "system",
@@ -10,6 +14,13 @@ ChatRole = Literal[
 
 
 class ChatMessage(TypedDict):
+    """
+    Formato neutral utilizado internamente por la aplicación.
+
+    Cada adapter es responsable de convertir esta estructura al formato
+    específico requerido por OpenAI, Gemini, Groq u Ollama.
+    """
+
     role: str
     content: NotRequired[str | None]
     model: NotRequired[str]
@@ -22,13 +33,46 @@ class ChatResponse(TypedDict):
     content: str
     model: str
 
+
+class ChatTurnResult(TypedDict):
+    """
+    Resultado estándar de un turno completo de conversación.
+
+    Todos los adapters deben retornar esta estructura.
+
+    Esto evita que la lógica común tenga que inspeccionar el historial
+    para deducir si se utilizaron herramientas.
+    """
+
+    # Texto final generado por el modelo.
+    content: str
+
+    # True cuando el modelo solicitó al menos una herramienta.
+    used_tools: bool
+
+    # Nombres de las herramientas solicitadas por el modelo.
+    tool_names: list[str]
+
+    # Herramientas cuyo resultado indicó status="ok".
+    successful_tool_names: list[str]
+
+    # Cantidad de ciclos modelo -> tools realizados.
+    tool_iterations: int
+
+
+# -------------------------------------------------------------------------
 # Tools
+# -------------------------------------------------------------------------
+
 class ToolResponse(TypedDict):
     action: str
     status: str
     message: str
 
-# Tools Schemas
+
+# -------------------------------------------------------------------------
+# Tool schemas
+# -------------------------------------------------------------------------
 
 JsonProperty = dict[str, str]
 
@@ -99,6 +143,10 @@ class ToolDefinition(TypedDict):
     function: ToolSchema
 
 
+# -------------------------------------------------------------------------
+# Tool calls
+# -------------------------------------------------------------------------
+
 class ToolCallFunction(Protocol):
     name: str
     arguments: str
@@ -108,9 +156,13 @@ class ToolCall(Protocol):
     id: str
     function: ToolCallFunction
 
-# Ollama normalized tool calls
 
 class ToolCallFunctionDict(TypedDict):
+    """
+    Formato normalizado utilizado por adapters que representan
+    los argumentos mediante diccionarios.
+    """
+
     name: str
     arguments: dict[str, object] | str
 
