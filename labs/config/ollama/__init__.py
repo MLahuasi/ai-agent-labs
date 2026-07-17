@@ -1,2 +1,0 @@
-"""Configuracion reutilizable para Ollama."""
-
