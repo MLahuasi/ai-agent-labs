@@ -10,6 +10,10 @@ Cómo los modelos de IA generan contenido de forma incremental y cómo el stream
 
 En esta sección se explica el flujo de eventos, la recepción de fragmentos o `chunks` y la construcción de la respuesta completa dentro de la aplicación.
 
+## 💬 [Chat con un LLM](./chat.md)
+
+Cómo mantener una conversación con historial, `System Prompt`, streaming y métricas de tokens.
+
 ## 🔀 [Orquestación de LLMs](./orquestacion-llms.md)
 
 Cómo integrar, comparar y seleccionar distintos modelos de lenguaje dentro de una aplicación.
