@@ -108,7 +108,6 @@ export class GeminiClient implements LlmClient {
     messages?: Message[],
   ): Promise<AskResponse> {
     let fullResponse = "";
-
     const stream = await this.client.models.generateContentStream({
       model: config.geminiModel,
       contents: this.buildContents(prompt, messages),

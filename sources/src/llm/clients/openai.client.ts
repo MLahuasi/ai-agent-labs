@@ -37,17 +37,17 @@ export class OpenAiClient implements LlmClient {
    * En caso contrario, se crea una conversación
    * mínima utilizando únicamente el prompt actual.
    */
-  private buildMessages(prompt: string, messages?: Message[]) {
-    const conversation = messages?.length
-      ? messages
-      : [
-          {
-            role: "user" as const,
-            content: prompt,
-          },
-        ];
+  private buildMessages(prompt: string, messages?: Message[]): Message[] {
+    if (messages?.length) {
+      return messages.filter((message) => message.role !== "system");
+    }
 
-    return conversation;
+    return [
+      {
+        role: "user",
+        content: prompt,
+      },
+    ];
   }
 
   /**
@@ -63,17 +63,11 @@ export class OpenAiClient implements LlmClient {
   ): Promise<AskResponse> {
     const response = await this.client.responses.create({
       model: config.openaiModel,
-      input: [
-        ...(systemPrompt
-          ? [
-              {
-                role: "system" as const,
-                content: systemPrompt,
-              },
-            ]
-          : []),
-        ...this.buildMessages(prompt, messages),
-      ],
+      ...(systemPrompt && {
+        instructions: systemPrompt,
+      }),
+
+      input: this.buildMessages(prompt, messages),
       max_output_tokens: config.max_tokens,
     });
 
@@ -103,20 +97,13 @@ export class OpenAiClient implements LlmClient {
     messages?: Message[],
   ): Promise<AskResponse> {
     let fullResponse = "";
-
     const stream = await this.client.responses.stream({
       model: config.openaiModel,
-      input: [
-        ...(systemPrompt
-          ? [
-              {
-                role: "system" as const,
-                content: systemPrompt,
-              },
-            ]
-          : []),
-        ...this.buildMessages(prompt, messages),
-      ],
+      ...(systemPrompt && {
+        instructions: systemPrompt,
+      }),
+
+      input: this.buildMessages(prompt, messages),
       max_output_tokens: config.max_tokens,
     });
 
@@ -126,7 +113,6 @@ export class OpenAiClient implements LlmClient {
      */
     stream.on("response.output_text.delta", (event) => {
       process.stdout.write(event.delta);
-
       fullResponse += event.delta;
     });
 

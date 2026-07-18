@@ -106,7 +106,6 @@ export class GroqClient implements LlmClient {
     messages?: Message[],
   ): Promise<AskResponse> {
     let fullResponse = "";
-
     let promptTokens = 0;
     let completionTokens = 0;
 

@@ -3,6 +3,7 @@ import { stdin as input, stdout as output } from "node:process";
 
 import { simpleCall, streamingResponse, systemPrompt } from "./labs/index.js";
 import { LlmClient } from "./llm/interfaces/index.js";
+import { startCLI } from "./chat/index.js";
 
 export async function showMenu(llm: LlmClient): Promise<void> {
   const rl = readline.createInterface({ input, output });
@@ -11,11 +12,12 @@ export async function showMenu(llm: LlmClient): Promise<void> {
   console.log("1. Simple Call");
   console.log("2. System Prompt");
   console.log("3. Streaming Response");
+  console.log("4. Chat");
   console.log("0. Salir");
 
   const option = await rl.question("\nOpción: ");
 
-  switch (option) {
+  switch (option.trim()) {
     case "1":
       await simpleCall(llm);
       break;
@@ -27,6 +29,18 @@ export async function showMenu(llm: LlmClient): Promise<void> {
     case "3":
       await streamingResponse(llm);
       break;
+
+    case "4":
+      /**
+       * Se cierra el readline del menú antes de iniciar
+       * el readline propio del chat.
+       *
+       * Esto evita tener dos interfaces leyendo
+       * simultáneamente desde process.stdin.
+       */
+      rl.close();
+      await startCLI(llm);
+      return;
 
     case "0":
       console.log("Hasta luego 👋");

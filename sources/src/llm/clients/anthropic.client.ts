@@ -101,7 +101,6 @@ export class AnthropicClient implements LlmClient {
     messages?: Message[],
   ): Promise<AskResponse> {
     let fullResponse = "";
-
     const responseStream = this.client.messages.stream({
       model: config.anthropicModel,
       max_tokens: config.max_tokens,

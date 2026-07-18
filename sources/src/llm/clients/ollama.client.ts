@@ -1,4 +1,5 @@
 import config from "../../config/index.js";
+
 import {
   AskResponse,
   LlmClient,
@@ -8,130 +9,203 @@ import {
 import { Message } from "../../types/index.js";
 
 /**
- * Implementación del cliente Ollama.
+ * Adaptador para utilizar modelos locales mediante la API HTTP de Ollama.
  *
- * Este cliente utiliza una instancia local
- * de Ollama para ejecutar modelos de lenguaje
- * sin depender de servicios externos.
+ * Implementa el contrato LlmClient para que Ollama pueda intercambiarse
+ * por otros proveedores sin modificar la conversación ni la CLI.
  */
 export class OllamaClient implements LlmClient {
   /**
-   * Construye la lista de mensajes que será
-   * enviada al modelo.
+   * Construye el historial que se enviará a Ollama.
    *
-   * Si existe un historial de conversación,
-   * se utiliza dicho historial.
+   * Responsabilidades:
+   * - Copiar los mensajes para no modificar el historial original.
+   * - Eliminar mensajes system existentes para evitar duplicados.
+   * - Agregar el prompt actual cuando todavía no está en el historial.
+   * - Enviar el systemPrompt como mensaje system.
+   * - Repetir las instrucciones junto al último mensaje del usuario.
    *
-   * En caso contrario, se crea una conversación
-   * mínima utilizando únicamente el prompt actual.
+   * El refuerzo del systemPrompt es útil con modelos locales pequeños,
+   * que pueden ignorar instrucciones alejadas de la pregunta actual.
    */
-  private buildMessages(prompt: string, messages?: Message[]): Message[] {
-    const conversation: Message[] = messages?.length
-      ? messages
-      : [
-          {
-            role: "user",
-            content: prompt,
-          },
-        ];
+  private buildConversation(
+    prompt: string,
+    systemPrompt?: string,
+    messages: Message[] = [],
+  ): Message[] {
+    const conversation = messages
+      .filter((message) => message.role !== "system")
+      .map((message) => ({ ...message }));
 
-    return conversation;
+    const lastMessage = conversation.at(-1);
+
+    const promptAlreadyIncluded =
+      lastMessage?.role === "user" && lastMessage.content === prompt;
+
+    if (!promptAlreadyIncluded) {
+      conversation.push({
+        role: "user",
+        content: prompt,
+      });
+    }
+
+    if (!systemPrompt) {
+      return conversation;
+    }
+
+    const currentUserMessage = conversation.at(-1);
+
+    if (currentUserMessage?.role === "user") {
+      currentUserMessage.content = [
+        "<system_instructions>",
+        systemPrompt,
+        "</system_instructions>",
+        "",
+        "<current_user_request>",
+        currentUserMessage.content,
+        "</current_user_request>",
+        "",
+        "Responde respetando estrictamente las instrucciones anteriores.",
+      ].join("\n");
+    }
+
+    return [
+      {
+        role: "system",
+        content: systemPrompt,
+      },
+      ...conversation,
+    ];
+  }
+
+  /**
+   * Extrae el mensaje enviado por Ollama cuando una petición HTTP falla.
+   *
+   * Si la respuesta no contiene JSON válido, utiliza el texto asociado
+   * al código HTTP.
+   */
+  private async getErrorMessage(response: Response): Promise<string> {
+    try {
+      const data = (await response.json()) as {
+        error?: string;
+      };
+
+      return data.error ?? response.statusText;
+    } catch {
+      return response.statusText;
+    }
+  }
+
+  /**
+   * Envía una petición común a Ollama.
+   *
+   * Se utiliza tanto para respuestas completas como para streaming,
+   * cambiando únicamente el valor de stream.
+   */
+  private request(conversation: Message[], stream: boolean): Promise<Response> {
+    return fetch(`${config.ollamaHost}/api/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: config.ollamaModel,
+        messages: conversation,
+        stream,
+        options: {
+          /**
+           * Reduce la variabilidad para que el modelo siga
+           * las instrucciones de manera más consistente.
+           */
+          temperature: 0,
+          top_k: 20,
+          top_p: 0.8,
+          repeat_penalty: 1.1,
+
+          /**
+           * Limita la cantidad máxima de tokens generados.
+           */
+          num_predict: config.max_tokens,
+
+          /**
+           * Permite obtener resultados reproducibles cuando
+           * se utilizan los mismos mensajes y parámetros.
+           */
+          seed: 42,
+        },
+      }),
+    });
   }
 
   /**
    * Genera una respuesta completa.
    *
-   * Espera a que el modelo termine la generación
-   * antes de retornar el resultado.
+   * Ollama espera hasta terminar la generación y devuelve
+   * un único objeto JSON con el texto y las métricas de uso.
    */
   async ask(
     prompt: string,
     systemPrompt?: string,
     messages?: Message[],
   ): Promise<AskResponse> {
-    const conversation = [
-      ...(systemPrompt
-        ? [
-            {
-              role: "system" as const,
-              content: systemPrompt,
-            },
-          ]
-        : []),
-      ...this.buildMessages(prompt, messages),
-    ];
+    const conversation = this.buildConversation(prompt, systemPrompt, messages);
 
-    const response = await fetch(`${config.ollamaHost}/api/chat`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: config.ollamaModel,
-        messages: conversation,
-        stream: false,
-      }),
-    });
+    const response = await this.request(conversation, false);
 
     if (!response.ok) {
-      throw new Error(`Ollama Error: ${response.status}`);
+      const message = await this.getErrorMessage(response);
+
+      throw new Error(`Ollama Error ${response.status}: ${message}`);
     }
 
     const data = (await response.json()) as OllamaGenerateResponse;
 
+    const text = data.message?.content?.trim();
+
+    if (!text) {
+      throw new Error("Ollama no retornó contenido de texto");
+    }
+
     return {
-      text: data.message.content,
+      text,
       totalInputTokens: data.prompt_eval_count ?? 0,
       totalOutputTokens: data.eval_count ?? 0,
     };
   }
 
   /**
-   * Genera una respuesta utilizando streaming.
+   * Genera una respuesta incremental.
    *
-   * Mientras el modelo genera contenido,
-   * este se imprime en consola y se acumula
-   * en la variable fullResponse.
+   * Ollama envía una secuencia NDJSON:
+   * cada línea contiene un objeto JSON con un fragmento de texto.
+   *
+   * Los fragmentos se imprimen inmediatamente y también se acumulan
+   * para devolver la respuesta completa al finalizar.
    */
-
   async stream(
     prompt: string,
     systemPrompt?: string,
     messages?: Message[],
   ): Promise<AskResponse> {
-    let fullResponse = "";
+    const conversation = this.buildConversation(prompt, systemPrompt, messages);
 
-    const conversation = [
-      ...(systemPrompt
-        ? [
-            {
-              role: "system" as const,
-              content: systemPrompt,
-            },
-          ]
-        : []),
-      ...this.buildMessages(prompt, messages),
-    ];
+    const response = await this.request(conversation, true);
 
-    const response = await fetch(`${config.ollamaHost}/api/chat`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: config.ollamaModel,
-        messages: conversation,
-        stream: true,
-      }),
-    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response);
+
+      throw new Error(`Ollama Error ${response.status}: ${message}`);
+    }
 
     if (!response.body) {
-      throw new Error("No se recibió stream");
+      throw new Error("Ollama no retornó un stream de respuesta");
     }
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
 
+    let buffer = "";
+    let fullResponse = "";
     let finalChunk: OllamaGenerateResponse | undefined;
 
     while (true) {
@@ -141,26 +215,71 @@ export class OllamaClient implements LlmClient {
         break;
       }
 
-      const chunk = decoder.decode(value);
+      /**
+       * Un bloque recibido desde la red puede contener:
+       * - varias líneas JSON completas;
+       * - una sola línea completa;
+       * - una parte incompleta de una línea.
+       *
+       * El buffer conserva la parte incompleta hasta recibir
+       * el siguiente bloque.
+       */
+      buffer += decoder.decode(value, {
+        stream: true,
+      });
 
-      const lines = chunk.split("\n").filter(Boolean);
+      const lines = buffer.split("\n");
+
+      /**
+       * El último elemento puede ser un JSON incompleto,
+       * por lo que no se procesa todavía.
+       */
+      buffer = lines.pop() ?? "";
 
       for (const line of lines) {
-        const data = JSON.parse(line) as OllamaGenerateResponse;
+        const trimmedLine = line.trim();
+
+        if (!trimmedLine) {
+          continue;
+        }
+
+        const data = JSON.parse(trimmedLine) as OllamaGenerateResponse;
 
         finalChunk = data;
 
         const text = data.message?.content ?? "";
 
         if (text) {
-          process.stdout.write(text);
-
           fullResponse += text;
+          process.stdout.write(text);
         }
       }
     }
 
+    /**
+     * Finaliza la decodificación UTF-8 y procesa cualquier
+     * línea que haya quedado pendiente al cerrar el stream.
+     */
+    buffer += decoder.decode();
+
+    if (buffer.trim()) {
+      const data = JSON.parse(buffer.trim()) as OllamaGenerateResponse;
+
+      finalChunk = data;
+
+      const text = data.message?.content ?? "";
+
+      if (text) {
+        fullResponse += text;
+        process.stdout.write(text);
+      }
+    }
+
     process.stdout.write("\n");
+
+    if (!fullResponse.trim()) {
+      throw new Error("Ollama no retornó contenido de texto");
+    }
 
     return {
       text: fullResponse,
