@@ -1,5 +1,5 @@
-import { LlmClient } from "../llm/interfaces/index.js";
 import { DOCUMENTATION_ASSISTANT_PROMPT } from "../llm/prompts/index.js";
+import { LlmClient } from "../types/index.js";
 
 const QUESTION = `Qué es async/await en javascript?, de manera resumida`;
 

@@ -10,6 +10,12 @@ Cómo los modelos de IA generan contenido de forma incremental y cómo el stream
 
 En esta sección se explica el flujo de eventos, la recepción de fragmentos o `chunks` y la construcción de la respuesta completa dentro de la aplicación.
 
+## 📄 [Análisis de Archivos con un LLM](./analyze-file-with-llm.md)
+
+Cómo validar, leer y enviar el contenido de un archivo a un modelo de lenguaje para procesarlo según las instrucciones definidas en el `System Prompt`.
+
+Se estudian aspectos como validación de rutas y extensiones, control del tamaño del contenido, construcción del prompt, streaming y métricas de tokens.
+
 ## 💬 [Chat con un LLM](./chat.md)
 
 Cómo mantener una conversación con historial, `System Prompt`, streaming y métricas de tokens.
@@ -31,12 +37,6 @@ Se introducen conceptos como `tool calling`, definición de herramientas, valida
 Cómo un sistema `RAG` indexa documentación, realiza búsquedas semánticas y utiliza el contexto recuperado para mejorar las respuestas del modelo.
 
 Se introduce la relación entre documentos, fragmentos, embeddings, búsqueda vectorial y generación de respuestas basadas en información externa.
-
-<!-- ## 🔄 [Flujos de Trabajo Agénticos](./create-ia-agent.md)
-
-Cómo construir procesos compuestos por varios pasos en los que uno o más modelos realizan tareas, utilizan herramientas y procesan resultados hasta alcanzar un objetivo.
-
-Se estudia la diferencia entre un flujo de trabajo controlado y un agente con capacidad para decidir dinámicamente sus siguientes acciones. -->
 
 ## 🧩 [Agentes y Patrones Agénticos](./arquitectura-agentica.md)
 

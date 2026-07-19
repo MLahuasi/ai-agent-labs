@@ -1,10 +1,6 @@
-import { Message } from "../../types/index.js";
+import { AskResponse } from "./agent.types.js";
+import { Message } from "./chat.types.js";
 
-export interface AskResponse {
-  text: string;
-  totalInputTokens: number;
-  totalOutputTokens: number;
-}
 /**
  * Contrato que debe implementar cualquier cliente LLM.
  *

@@ -1,10 +1,10 @@
-import { LlmClient } from "../llm/interfaces/index.js";
+import { LlmClient } from "../types/index.js";
 
 export async function simpleCall(llm: LlmClient): Promise<void> {
-  console.log("╔═════════════════════════════════════╗");
-  console.log("║    Primera llamada a Claude API     ║");
-  console.log("╚═════════════════════════════════════╝");
-  console.log("✅ Enviando pregunta a Cloude ...");
+  console.log("╔═════════════════════════════╗");
+  console.log("║    Primera llamada a LLM    ║");
+  console.log("╚═════════════════════════════╝");
+  console.log("✅ Enviando pregunta ...");
   console.log("");
   const question =
     "Que es TypeScript y en que se diferencia con JavaScript. Responde máximo en 3 puntos concisos";

@@ -1,8 +1,9 @@
-import { config } from "./config/index.js";
+import { config, validateConfig } from "./config/index.js";
 import { createLlmProvider } from "./llm/llm.factory.js";
 import { showMenu } from "./menu.js";
 
 async function main(): Promise<void> {
+  validateConfig();
   const { client: llm, model } = createLlmProvider();
   console.log("╔════════════════════════════════════════╗");
   console.log("║        DevAssistant - Curso IA         ║");

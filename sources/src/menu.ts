@@ -1,9 +1,14 @@
 import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 
-import { simpleCall, streamingResponse, systemPrompt } from "./labs/index.js";
-import { LlmClient } from "./llm/interfaces/index.js";
+import {
+  codeReview,
+  simpleCall,
+  streamingResponse,
+  systemPrompt,
+} from "./labs/index.js";
 import { startCLI } from "./chat/index.js";
+import { LlmClient } from "./types/index.js";
 
 export async function showMenu(llm: LlmClient): Promise<void> {
   const rl = readline.createInterface({ input, output });
@@ -13,6 +18,7 @@ export async function showMenu(llm: LlmClient): Promise<void> {
   console.log("2. System Prompt");
   console.log("3. Streaming Response");
   console.log("4. Chat");
+  console.log("5. Read file and call llm");
   console.log("0. Salir");
 
   const option = await rl.question("\nOpción: ");
@@ -41,6 +47,10 @@ export async function showMenu(llm: LlmClient): Promise<void> {
       rl.close();
       await startCLI(llm);
       return;
+
+    case "5":
+      await codeReview(llm);
+      break;
 
     case "0":
       console.log("Hasta luego 👋");

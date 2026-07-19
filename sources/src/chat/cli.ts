@@ -2,8 +2,8 @@ import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 
 import { Conversation } from "./index.js";
-import { LlmClient } from "../llm/interfaces/index.js";
 import { DOCUMENTATION_ASSISTANT_PROMPT } from "../llm/prompts/system.prompt.js";
+import { LlmClient } from "../types/index.js";
 
 export async function startCLI(llm: LlmClient): Promise<void> {
   const rl = readline.createInterface({

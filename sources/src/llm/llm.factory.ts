@@ -1,6 +1,5 @@
 import { config } from "../config/index.js";
-
-import type { LlmClient } from "./interfaces/index.js";
+import { LlmClient } from "../types/index.js";
 
 import {
   AnthropicClient,

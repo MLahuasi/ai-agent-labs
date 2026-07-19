@@ -1,9 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-import config from "../../config/index.js";
+// import config from "../../config/index.js";
 
-import { Message } from "../../types/index.js";
-import { AskResponse, LlmClient } from "../interfaces/index.js";
+import { AskResponse, LlmClient, Message } from "../../types/index.js";
+import { config } from "../../config/index.js";
 
 /**
  * Implementacion del cliente Anthropic.

@@ -1,5 +1,4 @@
-import { AskResponse } from "../llm/interfaces/index.js";
-import { Message } from "../types/chat.types.js";
+import { AskResponse, Message } from "../types/index.js";
 
 /**
  * Estimacion aproximada utilizada para calcular

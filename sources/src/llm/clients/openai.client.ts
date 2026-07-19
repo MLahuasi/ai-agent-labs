@@ -1,9 +1,7 @@
 import OpenAI from "openai";
 
-import config from "../../config/index.js";
-import { AskResponse, LlmClient } from "../interfaces/index.js";
-
-import { Message } from "../../types/index.js";
+import { AskResponse, LlmClient, Message } from "../../types/index.js";
+import { config } from "../../config/index.js";
 
 /**
  * Implementación del cliente OpenAI.

@@ -1,6 +1,5 @@
-import { LlmClient } from "../llm/interfaces/index.js";
-
 import { CODE_REVIEWER_PROMPT } from "../llm/prompts/index.js";
+import { LlmClient } from "../types/index.js";
 
 const CODIGO_CON_PROBLEMAS = `
 async function getUser(id) {

@@ -1,12 +1,10 @@
-import config from "../../config/index.js";
-
+import { config } from "../../config/index.js";
 import {
   AskResponse,
   LlmClient,
+  Message,
   OllamaGenerateResponse,
-} from "../interfaces/index.js";
-
-import { Message } from "../../types/index.js";
+} from "../../types/index.js";
 
 /**
  * Adaptador para utilizar modelos locales mediante la API HTTP de Ollama.
