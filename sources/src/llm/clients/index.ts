@@ -1,5 +1,5 @@
-export { AnthropicClient } from "./anthropic.client.js";
-export { GeminiClient } from "./gemini.client.js";
-export { GroqClient } from "./groq.client.js";
-export { OpenAiClient } from "./openai.client.js";
-export { OllamaClient } from "./ollama.client.js";
+export * from "./anthropic/index.js";
+export * from "./gemini/index.js";
+export * from "./groq/index.js";
+export * from "./openai/index.js";
+export * from "./ollama/index.js";

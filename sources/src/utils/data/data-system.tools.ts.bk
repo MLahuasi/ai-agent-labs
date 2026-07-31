@@ -1,0 +1,144 @@
+type UnknownRecord = Record<string, unknown>;
+
+export class DataUtils {
+  /**
+   * Comprueba si un valor es un objeto no nulo y no es un arreglo.
+   *
+   * @param value Valor que se desea comprobar.
+   * @returns true cuando el valor es un objeto válido.
+   */
+  static isRecord(value: unknown): value is UnknownRecord {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+  }
+
+  /**
+   * Intenta convertir un string JSON en un valor.
+   *
+   * @param value Texto JSON que se desea convertir.
+   * @returns Valor convertido o null cuando el texto no es JSON válido.
+   */
+  static parseJson(value: string): unknown {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Elimina espacios al inicio y al final de las propiedades string.
+   *
+   * @param value Objeto cuyos valores string se desean normalizar.
+   * @param omittedEmptyKeys Claves que deben eliminarse cuando su valor queda vacío.
+   * @returns Copia normalizada del objeto.
+   */
+  static normalizeStringProperties(
+    value: unknown,
+    omittedEmptyKeys: string[] = [],
+  ): UnknownRecord {
+    const result = DataUtils.isRecord(value) ? { ...value } : {};
+
+    for (const [key, currentValue] of Object.entries(result)) {
+      if (typeof currentValue !== "string") {
+        continue;
+      }
+
+      const normalizedValue = currentValue.trim();
+
+      if (!normalizedValue && omittedEmptyKeys.includes(key)) {
+        delete result[key];
+        continue;
+      }
+
+      result[key] = normalizedValue;
+    }
+
+    return result;
+  }
+
+  /**
+   * Convierte una representación simple de búsqueda en texto literal.
+   *
+   * @param value Texto que puede contener envoltorios de expresión regular.
+   * @returns Texto literal normalizado.
+   */
+  static normalizeLiteralText(value: string): string {
+    let normalized = value.trim();
+
+    const wrappers: RegExp[] = [
+      /^\\s[*+?]/,
+      /\\s[*+?]$/,
+      /^\.\*/,
+      /\.\*$/,
+      /^\^/,
+      /\$$/,
+    ];
+
+    let changed = true;
+
+    while (changed) {
+      changed = false;
+
+      for (const wrapper of wrappers) {
+        const result = normalized.replace(wrapper, "").trim();
+
+        if (result !== normalized) {
+          normalized = result;
+          changed = true;
+        }
+      }
+    }
+
+    if (
+      normalized.length >= 2 &&
+      ((normalized.startsWith('"') && normalized.endsWith('"')) ||
+        (normalized.startsWith("'") && normalized.endsWith("'")) ||
+        (normalized.startsWith("`") && normalized.endsWith("`")))
+    ) {
+      normalized = normalized.slice(1, -1).trim();
+    }
+
+    return normalized;
+  }
+
+  /**
+   * Desenvuelve objetos que contienen otro JSON serializado como único valor.
+   *
+   * @param value Valor que se desea desenvolver.
+   * @param maxDepth Profundidad máxima permitida.
+   * @returns Valor desenvuelto.
+   */
+  static unwrapSerializedObject(value: unknown, maxDepth = 3): unknown {
+    let current = value;
+
+    for (let depth = 0; depth < maxDepth; depth++) {
+      if (!DataUtils.isRecord(current)) {
+        break;
+      }
+
+      const entries = Object.entries(current);
+
+      if (entries.length !== 1) {
+        break;
+      }
+
+      const nestedValue = entries[0]?.[1];
+
+      if (typeof nestedValue !== "string") {
+        break;
+      }
+
+      const parsedValue = DataUtils.parseJson(nestedValue);
+
+      if (!DataUtils.isRecord(parsedValue)) {
+        break;
+      }
+
+      current = parsedValue;
+    }
+
+    return current;
+  }
+}
+
+export type { UnknownRecord };

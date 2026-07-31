@@ -1,23 +1,5 @@
-import { AskResponse, Message } from "../types/index.js";
-
-/**
- * Estimacion aproximada utilizada para calcular
- * el numero de tokens consumidos.
- *
- * Regla empirica:
- * 1 token ~= 4 caracteres.
- */
-const CHAR_PER_TOKEN = 4;
-
-/**
- * Firma esperada de cualquier funcion que
- * pueda enviar prompts a un LLM.
- */
-export type AskFunction = (
-  prompt: string,
-  systemPrompt?: string,
-  messages?: Message[],
-) => Promise<AskResponse>;
+import { Message, ToolDefinition } from "../types/agent/index.js";
+import { AskFunction, CHAR_PER_TOKEN } from "./index.js";
 
 /**
  * Gestiona una conversacion con un LLM.
@@ -86,20 +68,63 @@ export class Conversation {
    *
    * @returns Respuesta generada por el LLM.
    */
-  async send(prompt: string): Promise<string> {
+  async send(prompt: string, tools?: ToolDefinition[]): Promise<string> {
     if (!this.askFn) {
       throw new Error("No se ha configurado un cliente LLM");
     }
 
     this.addUserMessage(prompt);
 
-    const response = await this.askFn(prompt, this.systemPrompt, this.messages);
+    const response = await this.askFn({
+      prompt,
+      systemPrompt: this.systemPrompt,
+      messages: this.messages,
+      tools,
+    });
 
     this.addAssistantMessage(response.text);
 
     this.addUsage(response.totalInputTokens, response.totalOutputTokens);
 
     return response.text;
+  }
+
+  async sendChat(
+    prompt: string,
+    tools?: ToolDefinition[],
+    messages?: Message[],
+  ): Promise<{
+    text: string;
+    messages: Message[];
+  }> {
+    if (!this.askFn) {
+      throw new Error("No se ha configurado un cliente LLM");
+    }
+
+    if (messages) {
+      this.messages = messages;
+    }
+
+    this.addUserMessage(prompt);
+
+    const { text, totalInputTokens, totalOutputTokens, conversation } =
+      await this.askFn({
+        prompt,
+        systemPrompt: this.systemPrompt,
+        messages: this.messages,
+        tools,
+      });
+
+    if (conversation) {
+      this.messages = conversation;
+    } else this.addAssistantMessage(text);
+
+    this.addUsage(totalInputTokens, totalOutputTokens);
+
+    return {
+      text,
+      messages: this.messages,
+    };
   }
 
   addUsage(input_tokens: number, output_tokens: number) {

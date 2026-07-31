@@ -1,5 +1,5 @@
 import { CODE_REVIEWER_PROMPT } from "../llm/prompts/index.js";
-import { LlmClient } from "../types/index.js";
+import { LlmClient } from "../types/app/index.js";
 
 const CODIGO_CON_PROBLEMAS = `
 async function getUser(id) {
@@ -28,7 +28,9 @@ export async function systemPrompt(llm: LlmClient): Promise<void> {
   console.log("");
   console.log("✅ Demo 1: Enviando código SIN system prompt");
   console.log("");
-  const answer = await llm.ask(question);
+  const answer = await llm.ask({
+    prompt: question,
+  });
   console.log("-".repeat(50));
   console.log(` Respuesta: ${answer.text}`);
   console.log(` Tokens Entrada: ${answer.totalInputTokens}`);
@@ -37,7 +39,10 @@ export async function systemPrompt(llm: LlmClient): Promise<void> {
   console.log("");
   console.log("✅ Demo 2: Enviando código CON system prompt");
   console.log("");
-  const reviewerPromptAnswer = await llm.ask(question, CODE_REVIEWER_PROMPT);
+  const reviewerPromptAnswer = await llm.ask({
+    prompt: question,
+    systemPrompt: CODE_REVIEWER_PROMPT,
+  });
   console.log("-".repeat(50));
   console.log(` Respuesta: ${reviewerPromptAnswer.text}`);
   console.log(` Tokens Entrada: ${reviewerPromptAnswer.totalInputTokens}`);

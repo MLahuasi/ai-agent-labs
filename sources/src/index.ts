@@ -4,7 +4,11 @@ import { showMenu } from "./menu.js";
 
 async function main(): Promise<void> {
   validateConfig();
-  const { client: llm, model } = createLlmProvider();
+  const cli = createLlmProvider();
+  if (!cli) throw new Error("No se declaró el cliente.");
+
+  const { client: llm, model } = cli;
+
   console.log("╔════════════════════════════════════════╗");
   console.log("║        DevAssistant - Curso IA         ║");
   console.log("╚════════════════════════════════════════╝");

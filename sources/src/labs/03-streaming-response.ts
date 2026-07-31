@@ -1,5 +1,5 @@
 import { DOCUMENTATION_ASSISTANT_PROMPT } from "../llm/prompts/index.js";
-import { LlmClient } from "../types/index.js";
+import { LlmClient } from "../types/app/index.js";
 
 const QUESTION = `Qué es async/await en javascript?, de manera resumida`;
 
@@ -11,7 +11,9 @@ export async function streamingResponse(llm: LlmClient): Promise<void> {
   console.log("");
   console.log("✅ Demo 1: Enviando código SIN streaming");
   console.log("");
-  const answer = await llm.ask(QUESTION);
+  const answer = await llm.ask({
+    prompt: QUESTION,
+  });
   console.log("-".repeat(50));
   console.log(` Respuesta: ${answer.text}`);
   console.log(` Tokens Entrada: ${answer.totalInputTokens}`);
@@ -24,10 +26,10 @@ export async function streamingResponse(llm: LlmClient): Promise<void> {
   console.log("✅ Demo 2: Enviando código CON streaming");
   console.log("");
   console.log(` Respuesta:`);
-  const answerStreaming = await llm.stream(
-    QUESTION,
-    DOCUMENTATION_ASSISTANT_PROMPT,
-  );
+  const answerStreaming = await llm.stream({
+    prompt: QUESTION,
+    systemPrompt: DOCUMENTATION_ASSISTANT_PROMPT,
+  });
 
   console.log(` Tokens Entrada: ${answerStreaming.totalInputTokens}`);
   console.log(` Tokens Salida: ${answerStreaming.totalOutputTokens}`);

@@ -1,6 +1,6 @@
-import { CodeReviewer } from "../code-reviewer/index.js";
+import { FileReviewer } from "../files/index.js";
 import { CODE_REVIEWER_PROMPT } from "../llm/prompts/index.js";
-import { LlmClient } from "../types/index.js";
+import { LlmClient } from "../types/app/index.js";
 
 const FILE_PATH = "./src/labs/assets/rest-api.service.cs";
 
@@ -8,7 +8,8 @@ const FILE_PATH = "./src/labs/assets/rest-api.service.cs";
  * Ejecuta una revisión de código utilizando streaming.
  */
 export async function codeReview(llm: LlmClient): Promise<void> {
-  const reviewer = new CodeReviewer(llm, CODE_REVIEWER_PROMPT, {
+  const question = "Analiza este codigo fuente";
+  const reviewer = new FileReviewer(llm, question, CODE_REVIEWER_PROMPT, {
     maxChars: 50_000,
     rejectUnsupportedExtensions: true,
   });
@@ -21,6 +22,7 @@ export async function codeReview(llm: LlmClient): Promise<void> {
 
   console.log("✅ Demo 1: Revisando código CON streaming");
   console.log("");
+  console.log(` Pregunta: ${question}`);
   console.log(" Respuesta:");
 
   const result = await reviewer.reviewFile(FILE_PATH, "stream");

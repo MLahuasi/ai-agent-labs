@@ -1,5 +1,5 @@
 import { config } from "../config/index.js";
-import { LlmClient } from "../types/index.js";
+import { LlmClient } from "../types/app/index.js";
 
 import {
   AnthropicClient,
@@ -9,10 +9,12 @@ import {
   OllamaClient,
 } from "./clients/index.js";
 
-export function createLlmProvider(): {
-  client: LlmClient;
-  model: string;
-} {
+export function createLlmProvider():
+  | {
+      client: LlmClient;
+      model: string;
+    }
+  | undefined {
   switch (config.provider) {
     case "anthropic":
       return {

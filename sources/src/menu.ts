@@ -4,11 +4,13 @@ import { stdin as input, stdout as output } from "node:process";
 import {
   codeReview,
   simpleCall,
+  startAgenticLoop,
+  startCLI,
   streamingResponse,
   systemPrompt,
 } from "./labs/index.js";
-import { startCLI } from "./chat/index.js";
-import { LlmClient } from "./types/index.js";
+
+import { LlmClient } from "./types/app/index.js";
 
 export async function showMenu(llm: LlmClient): Promise<void> {
   const rl = readline.createInterface({ input, output });
@@ -18,7 +20,8 @@ export async function showMenu(llm: LlmClient): Promise<void> {
   console.log("2. System Prompt");
   console.log("3. Streaming Response");
   console.log("4. Chat");
-  console.log("5. Read file and call llm");
+  console.log("5. Read file and call LLM");
+  console.log("6. Agentic Loop");
   console.log("0. Salir");
 
   const option = await rl.question("\nOpción: ");
@@ -51,6 +54,11 @@ export async function showMenu(llm: LlmClient): Promise<void> {
     case "5":
       await codeReview(llm);
       break;
+
+    case "6":
+      rl.close();
+      await startAgenticLoop(llm);
+      return;
 
     case "0":
       console.log("Hasta luego 👋");
