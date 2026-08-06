@@ -6,6 +6,7 @@ import {
   simpleCall,
   startAgenticLoop,
   startCLI,
+  startRagAgent,
   streamingResponse,
   systemPrompt,
 } from "./labs/index.js";
@@ -22,6 +23,7 @@ export async function showMenu(llm: LlmClient): Promise<void> {
   console.log("4. Chat");
   console.log("5. Read file and call LLM");
   console.log("6. Agentic Loop");
+  console.log("7. Agente con RAG");
   console.log("0. Salir");
 
   const option = await rl.question("\nOpción: ");
@@ -58,6 +60,11 @@ export async function showMenu(llm: LlmClient): Promise<void> {
     case "6":
       rl.close();
       await startAgenticLoop(llm);
+      return;
+
+    case "7":
+      rl.close();
+      await startRagAgent(llm);
       return;
 
     case "0":

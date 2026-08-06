@@ -301,4 +301,98 @@ Gracias a este mecanismo, los sistemas RAG pueden encontrar información por sig
 
 ---
 
-[RAG](./rag.md)
+## 🗄️ Almacenamiento local con SQLite y `sqlite-vec`
+
+No siempre es necesario utilizar una base de datos vectorial independiente.
+
+Para aplicaciones locales, prototipos, herramientas de escritorio o sistemas RAG de pequeña y mediana escala, es posible almacenar los embeddings directamente en SQLite utilizando:
+
+- [`better-sqlite3`](https://github.com/WiseLibs/better-sqlite3): permite trabajar con SQLite desde Node.js mediante una API sincrónica.
+- [`sqlite-vec`](https://github.com/asg017/sqlite-vec): agrega funciones y tablas virtuales para almacenar y consultar vectores.
+- `@types/better-sqlite3`: proporciona definiciones de tipos para TypeScript.
+
+### Instalación
+
+```bash
+npm install better-sqlite3 sqlite-vec
+npm install --save-dev @types/better-sqlite3
+```
+
+### Inicialización
+
+```ts
+import Database from "better-sqlite3";
+import * as sqliteVec from "sqlite-vec";
+
+export function createDatabase(path: string): Database.Database {
+  const database = new Database(path);
+
+  database.pragma("journal_mode = WAL");
+  database.pragma("foreign_keys = ON");
+  database.pragma("busy_timeout = 5000");
+
+  sqliteVec.load(database);
+
+  return database;
+}
+```
+
+La extensión debe cargarse en cada conexión mediante:
+
+```ts
+sqliteVec.load(database);
+```
+
+Instalar el paquete no carga automáticamente las funciones vectoriales en SQLite.
+
+### Flujo de almacenamiento
+
+```text
+Documento
+    ↓
+Chunks
+    ↓
+Modelo de embeddings
+    ↓
+Float32Array
+    ↓
+SQLite + sqlite-vec
+```
+
+Cada chunk puede almacenarse junto con:
+
+- Su contenido original.
+- Su embedding.
+- El identificador del documento.
+- El heading o sección de origen.
+- Su posición dentro del documento.
+- Otros metadatos útiles para filtros y citas.
+
+### Consideraciones
+
+`better-sqlite3` utiliza una API sincrónica. Esto simplifica las transacciones y funciona bien cuando las consultas son rápidas, pero las búsquedas o procesos pesados pueden bloquear el hilo principal de Node.js.
+
+Para operaciones extensas pueden utilizarse Worker Threads o ejecutarse el procesamiento fuera del servidor HTTP principal.
+
+`sqlite-vec` todavía se encuentra en una etapa previa a la versión 1.0. Por este motivo se recomienda:
+
+Esta solución es especialmente adecuada para:
+
+- Aplicaciones locales.
+- Prototipos de RAG.
+- Herramientas CLI.
+- Aplicaciones de escritorio.
+- Bases documentales pequeñas o medianas.
+- Sistemas con baja concurrencia de escritura.
+
+Para grandes cantidades de embeddings, alta concurrencia, múltiples instancias o necesidades de alta disponibilidad, puede ser más apropiado utilizar una solución dedicada como PostgreSQL con `pgvector` o una base de datos vectorial especializada.
+
+---
+
+## TOOLS
+
+[SIMULADOR DE EMBEDDING](https://pazteddy.com/IA-developers/seccion-5-embedding-simulator)
+
+---
+
+[RAG](./rag.md) || [SIGUIENTE - MODELO EMBEDDING](./modelo-embedding.md)

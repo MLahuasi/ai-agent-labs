@@ -232,7 +232,7 @@ export class FileSystemToolActions {
     // Filtra los archivos encontrados comparando únicamente el nombre de cada archivo, sin incluir su ruta.
     const matchingFiles = allFiles.filter((file) => {
       // Extrae el nombre del archivo incluido en la ruta.
-      const currentFileName = FileSystemTools.getNormalizedFileName(file);
+      const currentFileName = FileSystemTools.getLowerCaseFileName(file);
 
       // Cuando exact_match es false, se realiza una coincidencia parcial.
       // if (params.exact_match === false) {

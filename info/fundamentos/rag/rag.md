@@ -422,4 +422,4 @@ Gracias a esta arquitectura, los modelos pueden responder utilizando conocimient
 
 ---
 
-[REGRESAR](./README.md)
+[REGRESAR](../README.md)

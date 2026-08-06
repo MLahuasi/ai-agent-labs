@@ -310,4 +310,4 @@ Gracias a este enfoque, es posible construir asistentes capaces de:
 
 ---
 
-[REGRESAR](./README.md)
+[REGRESAR](./README.md) || [SIGUIENTE - IMPLEMENTACION](./tools.md)

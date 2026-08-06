@@ -26,13 +26,13 @@ Cómo integrar, comparar y seleccionar distintos modelos de lenguaje dentro de u
 
 Se estudian conceptos como proveedores, modelos, abstracciones comunes y criterios para elegir el LLM más adecuado según el caso de uso.
 
-## 🛠️ [Uso de Herramientas](./use-tools.md)
+## 🛠️ [Uso de Herramientas](./tools/use-tools.md)
 
 Cómo un modelo o agente puede utilizar herramientas externas para ampliar sus capacidades, consultar información o ejecutar acciones específicas.
 
 Se introducen conceptos como `tool calling`, definición de herramientas, validación de parámetros y procesamiento de resultados.
 
-## 🔎 [RAG — Retrieval-Augmented Generation](./rag.md)
+## 🔎 [RAG — Retrieval-Augmented Generation](./rag/rag.md)
 
 Cómo un sistema `RAG` indexa documentación, realiza búsquedas semánticas y utiliza el contexto recuperado para mejorar las respuestas del modelo.
 
