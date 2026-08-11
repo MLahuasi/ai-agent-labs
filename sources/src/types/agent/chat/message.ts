@@ -1,3 +1,4 @@
+import { ToolCall } from "../index.js";
 import { Role } from "./index.js";
 
 /**
@@ -41,14 +42,4 @@ export interface Message {
    * No sustituye a toolCallId.
    */
   toolName?: string;
-}
-
-export interface ToolCall {
-  /**
-   * Identificador generado por el modelo.
-   * Ejemplo: "call_abc123"
-   */
-  id?: string;
-  name: string;
-  arguments: Record<string, unknown>;
 }

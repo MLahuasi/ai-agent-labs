@@ -7,7 +7,7 @@ import {
   GeminiClient,
   GroqClient,
   OllamaClient,
-} from "./clients/index.js";
+} from "./clients/chat/index.js";
 
 export function createLlmProvider():
   | {

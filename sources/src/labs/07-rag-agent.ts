@@ -1,11 +1,12 @@
 import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { LlmClient } from "../types/app/index.js";
-import { RagAgent } from "../rag/rag-agent.js";
-import { runIngest } from "../rag/ingest.js";
+import { RagPromptService } from "../rag/services/rag-prompt.service.js";
+import { runIngest } from "../rag/ingest/ingest.js";
 import { config } from "../config/index.js";
 import { Conversation } from "../chat/index.js";
 import { Message } from "../types/agent/index.js";
+import { ChunkingFileExtension } from "../rag/services/index.js";
 
 const RAG_SYSTEM_PROMPT = `Eres DevAssistant, un asistente de documentación técnica.
 Tu trabajo es responder preguntas basándote ÚNICAMENTE en la documentación que se te proporciona como contexto.
@@ -17,10 +18,20 @@ Reglas importantes:
 4. Usa markdown para formatear tu respuesta (código, listas, encabezados)
 5. Sé conciso y directo — los developers prefieren respuestas específicas`;
 
+const RAG_INSTRUCTIONS = `
+Basándote únicamente en el contexto anterior, responde la siguiente pregunta.
+Si la información no está disponible en el contexto, indícalo claramente.
+Cita el archivo y la sección utilizados cuando sea posible.
+`;
+
 /**
  * Ejecuta una revisión de código utilizando streaming.
  */
 export async function startRagAgent(llm: LlmClient): Promise<void> {
+  const rl = readline.createInterface({
+    input,
+    output,
+  });
   const conversation = new Conversation(RAG_SYSTEM_PROMPT);
   conversation.setAsk(({ prompt, systemPrompt, messages }) =>
     llm.stream({
@@ -29,12 +40,6 @@ export async function startRagAgent(llm: LlmClient): Promise<void> {
       messages,
     }),
   );
-  const ragAgent = new RagAgent(llm);
-
-  const rl = readline.createInterface({
-    input,
-    output,
-  });
 
   console.log("╔══════════════════════╗");
   console.log("║      Rag Agent       ║");
@@ -48,7 +53,7 @@ export async function startRagAgent(llm: LlmClient): Promise<void> {
   console.log("");
 
   try {
-    let messages: Message[] | undefined = conversation.getHistory();
+    let messages: Message[] | undefined = undefined;
     while (true) {
       const inputText = await rl.question("Tú: ");
       const userInput = inputText.trim();
@@ -60,8 +65,15 @@ export async function startRagAgent(llm: LlmClient): Promise<void> {
       if (userInput.startsWith("/ingest")) {
         const inputParts = userInput.split(" ");
         const docsDirectory = inputParts[1] ?? config.docsPath;
+
         try {
-          await runIngest(docsDirectory);
+          await runIngest(
+            docsDirectory,
+            config.separator,
+            config.extention as ChunkingFileExtension,
+            config.targetChunkSize,
+            config.chunkSizeTolerance,
+          );
 
           console.log("\nIngesta completada correctamente.\n");
         } catch (error) {
@@ -103,12 +115,19 @@ export async function startRagAgent(llm: LlmClient): Promise<void> {
 
       try {
         process.stdout.write("\nAsistente: ");
-        conversation.addUserMessage(userInput);
-        await ragAgent.askWithRAG({
-          prompt: userInput,
+        const ragAgent = new RagPromptService();
+        const ragPrompt = await ragAgent.buildRagPrompt(
+          userInput,
+          RAG_INSTRUCTIONS,
+        );
+
+        const { messages: chat } = await conversation.sendChat(
+          ragPrompt,
+          undefined,
           messages,
-          systemPrompt: RAG_SYSTEM_PROMPT,
-        });
+        );
+
+        messages = chat;
 
         process.stdout.write("\n\n");
       } catch (error) {

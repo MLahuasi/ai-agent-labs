@@ -67,6 +67,47 @@ export class AppConfigService {
     return value;
   }
 
+  private getBooleanEnvVar(name: string, defaultValue: string): boolean {
+    const rawValue = this.getRequiredEnvVar(name, defaultValue)
+      .trim()
+      .toLowerCase();
+
+    const trueValues = ["true", "1", "yes", "on"];
+    const falseValues = ["false", "0", "no", "off"];
+
+    if (trueValues.includes(rawValue)) {
+      return true;
+    }
+
+    if (falseValues.includes(rawValue)) {
+      return false;
+    }
+
+    throw new Error(
+      `La variable de entorno ${name} debe contener un valor booleano válido`,
+    );
+  }
+
+  /**
+   * Obtiene una variable de entorno como número decimal.
+   *
+   * @param name Nombre de la variable de entorno.
+   * @param defaultValue Valor utilizado cuando la variable no está definida.
+   * @return Valor decimal obtenido.
+   */
+  private getNumberEnvVar(name: string, defaultValue: string): number {
+    const rawValue = this.getRequiredEnvVar(name, defaultValue);
+    const value = Number.parseFloat(rawValue);
+
+    if (Number.isNaN(value)) {
+      throw new Error(
+        `La variable de entorno ${name} debe contener un número válido`,
+      );
+    }
+
+    return value;
+  }
+
   /**
    * Valida que el proveedor recibido se encuentre
    * dentro de la lista de proveedores soportados.
@@ -87,11 +128,7 @@ export class AppConfigService {
     const rawProvider = process.env["MODEL_PROVIDER"] ?? "anthropic";
 
     return {
-      /**
-       * Proveedor LLM utilizado por la aplicación.
-       */
-      provider: this.validateProvider(rawProvider),
-
+      // LLMS SETTINGS
       /**
        * Configuración de Anthropic.
        */
@@ -100,17 +137,11 @@ export class AppConfigService {
         "ANTHROPIC_MODEL",
         "claude-sonnet-4-6",
       ),
-
       /**
        * Configuración de OpenAI.
        */
       openaiApiKey: this.getRequiredEnvVar("OPENAI_API_KEY", ""),
       openaiModel: this.getRequiredEnvVar("OPENAI_MODEL", "gpt-4o-mini"),
-      openaiEmbeddingModel: this.getRequiredEnvVar(
-        "OPENAI_EMBEDDING_MODEL",
-        "text-embedding-3-small",
-      ),
-
       /**
        * Configuración de Gemini.
        */
@@ -119,7 +150,6 @@ export class AppConfigService {
         "GEMINI_MODEL",
         "gemini-2.5-flash-lite",
       ),
-
       /**
        * Configuración de Groq.
        */
@@ -132,18 +162,56 @@ export class AppConfigService {
       ollamaHost: this.getRequiredEnvVar("OLLAMA_HOST", ""),
       ollamaModel: this.getRequiredEnvVar("OLLAMA_MODEL", "qwen2.5-coder:3b"),
 
+      // === CONFIGURACIÓN DEL MODELO ===
       /**
-       * Configuración relacionada con RAG.
+       * Proveedor LLM utilizado por la aplicación.
        */
-      docsPath: this.getRequiredEnvVar("DOCS_PATH", "./docs/sample_docs"),
-      dbPath: this.getRequiredEnvVar("DB_PATH", "./data/vectors.db"),
-      ragTopK: this.getIntegerEnvVar("RAG_TOP_K", "5"),
-
+      provider: this.validateProvider(rawProvider),
       /**
        * Número máximo de tokens generados por el modelo.
        */
       max_tokens: this.getIntegerEnvVar("MAX_TOKENS", "1024"),
+      /**
+       * Imprimir logs respuestas llms
+       */
+      print_logs: this.getBooleanEnvVar("PRINT_LOGS", "false"),
 
+      // ==== RAG ====
+      /**
+       * Modelo de embeddings utilizado para generar vectores en OpenAI.
+       */
+      openaiEmbeddingModel: this.getRequiredEnvVar(
+        "OPENAI_EMBEDDING_MODEL",
+        "text-embedding-3-small",
+      ),
+      /**
+       * Ruta donde se encuentran los documentos a indexar o consultar.
+       */
+      docsPath: this.getRequiredEnvVar("DOCS_PATH", "./docs/sample_docs"),
+      /**
+       * Ruta donde se almacena la base de datos vectorial.
+       */
+      dbPath: this.getRequiredEnvVar("DB_PATH", "./data/vectors.db"),
+      /**
+       * Número máximo de chunks devueltos durante una búsqueda RAG.
+       */
+      ragTopK: this.getIntegerEnvVar("RAG_TOP_K", "5"),
+      /**
+       * Separador de secciones del archivo
+       */
+      separator: this.getRequiredEnvVar("SEPARATOR", "##"),
+      /**
+       * Extension de archivo que se usará en RAG
+       */
+      extention: this.getRequiredEnvVar("EXTENTION", ".md"),
+      /**
+       * Tamaño del Chunk
+       */
+      targetChunkSize: this.getIntegerEnvVar("TARGET_CHUNK_SIZE", "200"),
+      /**
+       * Se usa para definir un porcentaje +- de extensión de un RAG
+       */
+      chunkSizeTolerance: this.getNumberEnvVar("CHUNK_SIZE_TOLERANCE", "0.1"),
       /**
        * Evita ciclos indefinidos cuando el modelo solicita herramientas repetidamente.
        */

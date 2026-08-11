@@ -14,7 +14,7 @@ export async function startAgenticLoop(llm: LlmClient): Promise<void> {
 
   const conversation = new Conversation(DOCUMENTATION_ASSISTANT_PROMPT);
   conversation.setAsk(({ prompt, systemPrompt, messages, tools }) =>
-    llm.askWithTools({
+    llm.ask({
       prompt,
       systemPrompt,
       messages,

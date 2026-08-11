@@ -8,7 +8,7 @@
     "dev": "tsx src/index.ts",
     "start": "tsx src/index.ts",
     "review": "tsx src/exercises/code-reviewer.ts",
-    "ingest": "tsx src/rag/ingest.cli.ts",
+    "ingest": "tsx src/rag/ingest/ingest.cli.ts",
     "demo": "tsx src/agent/demo.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit"

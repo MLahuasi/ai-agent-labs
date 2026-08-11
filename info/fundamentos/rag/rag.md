@@ -416,6 +416,292 @@ Gracias a esta arquitectura, los modelos pueden responder utilizando conocimient
 
 ---
 
+## ✅ Resultado del proceso
+
+```txt
+╔══════════════════════╗
+║      Rag Agent       ║
+╚══════════════════════╝
+✅ Demo 1: Consulta Agente con RAG
+
+💬 Escribe tu pregunta y presiona Enter.
+💡 Tip: usa /ingest para cargar documentación
+   Comandos: /ingest [path], /clear, /stats, /tools, /exit
+```
+
+**Tú:** /ingest
+
+```txt
+Iniciando la ingestión de documentos..
+Directorio: ./docs/sample_docs
+
+Procesando api-reference.md... 26 chunks generados
+Procesando getting-started.md... 23 chunks generados
+Procesando README.md... 17 chunks generados
+Total de chunks generados 66
+Generando embeddings para 66 chunks...
+Embeddings generados 1536 dimensiones c/u
+
+Guardando en vector store SQLite: ./data/vectors.db
+Vector store guardado 66 chunks en ./data/vectors.db
+
+Total: 66 chunks procesados
+
+Preview en: data\chunks-preview.json
+
+Ingestión completa, listo para la búsqueda semántica
+
+Ingesta completada correctamente.
+```
+
+**Tú:** Como hacer un primer request?
+
+**Asistente:**
+
+```txt
+Buscando: "Como hacer un primer request?" -> 5 chunks recuperados
+
+Contexto recuperado de:
+-> getting-started.md ((Contenido))
+-> api-reference.md (## Rate Limiting)
+-> api-reference.md ((Contenido))
+```
+
+Para hacer tu primera request a la API de TaskFlow, puedes utilizar el siguiente comando `curl` para verificar que la API está respondiendo:
+
+```bash
+curl https://api.taskflow.app/v1/health
+```
+
+La respuesta esperada debería ser:
+
+```json
+{ "status": "ok", "version": "1.4.2" }
+```
+
+Esto lo puedes encontrar en la documentación en el archivo **getting-started.md**, sección **(Contenido)**, Paso 2.
+
+**Tú:** Como se realiza la Autenticacion?
+
+**Asistente:**
+
+```txt
+Buscando: "Como se realiza la Autenticacion?" -> 5 chunks recuperados
+
+Contexto recuperado de:
+-> getting-started.md ((Contenido))
+-> api-reference.md (## Autenticación)
+-> getting-started.md (## Autenticación con JWT)
+-> api-reference.md ((Contenido))
+```
+
+Para realizar la autenticación en la API de TaskFlow, sigue estos pasos:
+
+1. **Envía una petición de inicio de sesión** usando el siguiente comando `curl`:
+
+   ```bash
+   curl -X POST https://api.taskflow.app/v1/auth/login \
+     -H "Content-Type: application/json" \
+     -d '{
+       "email": "tu@email.com",
+       "password": "tu-contraseña"
+     }'
+   ```
+
+2. **Guarda el `accessToken` de la respuesta**, que se utilizará en los headers de cada request:
+
+   ```bash
+   export TASKFLOW_TOKEN="eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+   ```
+
+3. **Utiliza el `accessToken` en los headers** de tus requests a los endpoints protegidos.
+
+4. **Cuando el `accessToken` expire**, puedes obtener uno nuevo mediante una petición con el `refreshToken`:
+
+   ```bash
+   curl -X POST https://api.taskflow.app/v1/auth/refresh \
+     -H "Content-Type: application/json" \
+     -d '{
+       "refreshToken": "tu-refresh-token"
+     }'
+   ```
+
+Esta información proviene del archivo **getting-started.md**, sección **(Contenido)**, Paso 3, y del archivo **api-reference.md**, sección **## Autenticación**.
+
+**Tú:** Explicame los Features
+
+**Asistente:**
+
+```txt
+Buscando: "Explicame los Features" -> 5 chunks recuperados
+
+Contexto recuperado de:
+-> readme.md (## Features principales)
+-> readme.md (## Contribución)
+-> getting-started.md (## Preguntas Frecuentes (FAQ))
+-> api-reference.md (## Proyectos)
+-> api-reference.md (## Tareas)
+```
+
+Los principales features de TaskFlow son:
+
+- **Gestión de tareas**: Permite realizar operaciones CRUD (Crear, Leer, Actualizar, Eliminar) en tareas, incluyendo la gestión de prioridades, fechas límite, etiquetas y estados.
+
+- **Proyectos**: Facilita la organización de tareas dentro de proyectos, permitiendo la asignación de miembros y permisos.
+
+- **Colaboración**: Posibilita la asignación de tareas, la posibilidad de comentar y recibir notificaciones en tiempo real.
+
+- **Webhooks**: Permite integrar TaskFlow con cualquier sistema externo, facilitando la comunicación y la automatización.
+
+- **SDKs oficiales**: Ofrece kits de desarrollo (SDKs) en JavaScript/TypeScript y Python para facilitar su uso.
+
+- **Rate limiting**: Establece un límite de 100 requests por minuto para cada usuario autenticado.
+
+- **Paginación cursor-based**: Proporciona un manejo eficiente de colecciones grandes mediante paginación basada en cursor.
+
+Esta información se encuentra en el archivo **readme.md**, sección **## Features principales**.
+
+**Tú:** /stats
+
+```txt
+📊 Estadísticas de la conversación:
+   • Turnos: 3
+   • Tokens de entrada acumulados: 4472
+   • Tokens de salida acumulados: 628
+   • Tokens estimados en contexto actual: 2028
+```
+
+**Tú:** Como funciona el Modelo de Tarea?
+
+**Asistente:**
+
+```txt
+Buscando: "Como funciona el Modelo de Tarea?" -> 5 chunks recuperados
+
+Contexto recuperado de:
+-> api-reference.md ((Contenido))
+-> api-reference.md (## Tareas)
+-> readme.md ((Contenido))
+-> readme.md (## Features principales)
+```
+
+El modelo de tarea en la API de TaskFlow está definido por la siguiente estructura:
+
+```typescript
+interface Task {
+  id: string; // Identificador único de la tarea, ej. "tsk_01HXYZ123"
+  title: string; // Título de la tarea, máximo 255 caracteres
+  description?: string; // Descripción opcional, máximo 10,000 caracteres (puede usar Markdown)
+  status: "todo" | "in_progress" | "done" | "cancelled"; // Estado de la tarea
+  priority: "low" | "medium" | "high" | "urgent"; // Prioridad de la tarea
+  projectId?: string; // Identificador del proyecto al que pertenece la tarea, opcional
+  assigneeId?: string; // Identificador del usuario asignado a la tarea, opcional
+  creatorId: string; // Identificador del usuario que creó la tarea
+  dueDate?: string; // Fecha de vencimiento en formato ISO 8601, opcional
+  tags: string[]; // Etiquetas asociadas a la tarea
+  createdAt: string; // Fecha de creación de la tarea
+  updatedAt: string; // Fecha de última actualización de la tarea
+}
+```
+
+### Descripción de los campos:
+
+- **id**: Identificación única de la tarea.
+- **title**: Título que describe la tarea.
+- **description**: Descripción detallada, no obligatoria.
+- **status**: Indica el progreso de la tarea (por ejemplo, 'todo', 'in_progress', etc.).
+- **priority**: Define la importancia de la tarea.
+- **projectId**: Referencia al proyecto al que la tarea está ligada, si es aplicable.
+- **assigneeId**: Identifica al usuario que tiene la tarea asignada.
+- **creatorId**: Identifica al creador de la tarea.
+- **dueDate**: Fecha límite para completar la tarea.
+- **tags**: Lista de etiquetas para categorizar la tarea.
+- **createdAt**: Marca de tiempo cuando se creó la tarea.
+- **updatedAt**: Marca de tiempo de la última vez que se actualizó la tarea.
+
+Esta información se encuentra en el archivo **api-reference.md**, sección **### Modelo de Tarea**.
+
+**Tú:** Como se manejan los tokens?
+
+**Asistente:**
+
+```txt
+Buscando: "Como se manejan los tokens?" -> 5 chunks recuperados
+
+Contexto recuperado de:
+-> api-reference.md ((Contenido))
+-> getting-started.md (## Autenticación con JWT)
+-> api-reference.md (## Autenticación)
+```
+
+El manejo de tokens en la API de TaskFlow se realiza de la siguiente manera:
+
+### Obtener un token
+
+Para obtener un `accessToken`, se debe enviar una solicitud de inicio de sesión:
+
+```http
+POST /v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "usuario@ejemplo.com",
+  "password": "tu-contraseña"
+}
+```
+
+La respuesta exitosa incluirá el `accessToken` y un `refreshToken`:
+
+```json
+{
+  "accessToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expiresIn": 900,
+  "tokenType": "Bearer"
+}
+```
+
+### Usar el token
+
+El `accessToken` debe incluirse en el header `Authorization` de cada request:
+
+```http
+Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+### Renovar el token
+
+El `accessToken` expira en 15 minutos. Para obtener un nuevo `accessToken`, se debe usar el `refreshToken`:
+
+```http
+POST /v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+Esta información se encuentra en el archivo **api-reference.md**, sección **## Autenticación** y en las secciones relacionadas sobre obtener y renovar el token.
+
+**Tú:** /stats
+
+```txt
+📊 Estadísticas de la conversación:
+   • Turnos: 5
+   • Tokens de entrada acumulados: 11838
+   • Tokens de salida acumulados: 1472
+   • Tokens estimados en contexto actual: 3868
+```
+
+**Tú:** /exit
+
+```txt
+Resumen: 5 turnos, 11838 tokens de entrada, 1472 tokens de salida.
+```
+
+---
+
 ### 📖 Resumen
 
 **RAG funciona dividiendo documentos en fragmentos, transformándolos en embeddings, almacenándolos en una base de datos vectorial, recuperando los fragmentos más relevantes para una consulta y utilizándolos como contexto adicional para que el LLM genere respuestas mejor fundamentadas.**
