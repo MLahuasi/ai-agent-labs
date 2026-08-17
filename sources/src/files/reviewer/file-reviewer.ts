@@ -32,13 +32,30 @@ export class FileReviewer {
   private readonly maxChars: number;
   private readonly rejectUnsupportedExtensions: boolean;
 
+  /**
+   * Crea una nueva instancia del revisor de archivos.
+   *
+   * @param llm Cliente LLM utilizado para realizar la revisión.
+   * @param prompt Prompt utilizado para construir la solicitud de revisión.
+   * @param systemPrompt Instrucciones de sistema utilizadas por el modelo.
+   * @param llmOptions Configuración utilizada para ejecutar las solicitudes al LLM.
+   * @param llmOptions.maxTokens Máximo de tokens permitidos en respuestas sin herramientas.
+   * @param llmOptions.maxTokensTools Máximo de tokens permitidos en respuestas con herramientas.
+   * @param llmOptions.maxIterations Máximo de iteraciones permitidas durante una ejecución.
+   * @param options Configuración específica del revisor de archivos.
+   */
   constructor(
     private readonly llm: LlmClient,
     private readonly prompt: string,
     private readonly systemPrompt: string,
+    private readonly llmOptions: Pick<
+      AgentRequest,
+      "maxTokens" | "maxTokensTools" | "maxIterations"
+    >,
     options: FileReviewerOptions = {},
   ) {
     this.maxChars = options.maxChars ?? DEFAULT_MAX_CHARS;
+
     this.rejectUnsupportedExtensions =
       options.rejectUnsupportedExtensions ?? false;
 
@@ -206,25 +223,38 @@ export class FileReviewer {
   }
 
   /**
-   * Envía la solicitud utilizando el modo seleccionado.
+   * Envía la solicitud de revisión utilizando el modo seleccionado.
+   *
+   * @param mode Modo utilizado para obtener la respuesta del modelo.
+   * @param request Datos necesarios para realizar la revisión.
+   * @param request.prompt Prompt enviado al modelo.
+   * @param request.messages Historial opcional de conversación.
+   * @return Respuesta generada por el modelo.
    */
   private requestReview(
     mode: FileReviewerMode,
-    { prompt, messages }: AgentRequest,
+    {
+      prompt,
+      messages,
+    }: {
+      prompt: string;
+      messages?: Message[];
+    },
   ): Promise<AgentResponse> {
-    if (mode === "stream") {
-      return this.llm.stream({
-        prompt,
-        systemPrompt: this.systemPrompt,
-        messages,
-      });
-    }
-
-    return this.llm.ask({
+    const request: AgentRequest = {
       prompt,
       systemPrompt: this.systemPrompt,
       messages,
-    });
+      maxTokens: this.llmOptions.maxTokens,
+      maxTokensTools: this.llmOptions.maxTokensTools,
+      maxIterations: this.llmOptions.maxIterations,
+    };
+
+    if (mode === "stream") {
+      return this.llm.stream(request);
+    }
+
+    return this.llm.ask(request);
   }
 
   /**

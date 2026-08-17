@@ -57,5 +57,6 @@ export interface AppConfig {
   // Tools
   //=======
   max_iterations: number;
+  max_tool_calls: number;
   max_tokens_tools: number;
 }

@@ -1,3 +1,4 @@
+import { config } from "../config/index.js";
 import { FileReviewer } from "../files/index.js";
 import { CODE_REVIEWER_PROMPT } from "../llm/prompts/index.js";
 import { LlmClient } from "../types/app/index.js";
@@ -6,16 +7,30 @@ const FILE_PATH = "./src/labs/assets/rest-api.service.cs";
 
 /**
  * Ejecuta una revisión de código utilizando streaming.
+ *
+ * @param llm Cliente LLM utilizado para realizar la revisión.
+ * @return No retorna ningún valor.
  */
 export async function codeReview(llm: LlmClient): Promise<void> {
-  const question = "Analiza este codigo fuente";
-  const reviewer = new FileReviewer(llm, question, CODE_REVIEWER_PROMPT, {
-    maxChars: 50_000,
-    rejectUnsupportedExtensions: true,
-  });
+  const question = "Analiza este código fuente";
+
+  const reviewer = new FileReviewer(
+    llm,
+    question,
+    CODE_REVIEWER_PROMPT,
+    {
+      maxTokens: config.max_tokens,
+      maxTokensTools: config.max_tokens_tools,
+      maxIterations: config.max_iterations,
+    },
+    {
+      maxChars: 50_000,
+      rejectUnsupportedExtensions: true,
+    },
+  );
 
   console.log("╔══════════════════════════╗");
-  console.log("║      Code Reviewer       ║");
+  console.log("║       Code Review        ║");
   console.log("╚══════════════════════════╝");
   console.log(` Archivo: ${FILE_PATH}`);
   console.log("");

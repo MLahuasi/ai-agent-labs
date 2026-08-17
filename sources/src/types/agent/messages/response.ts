@@ -1,19 +1,36 @@
 import { Message } from "../chat/message.js";
 
 /**
- * Respuesta generada por el agente de IA.
+ * Representa la respuesta generada por el agente.
  */
-// export interface AgentResponse<TToolDefinition = never> {
 export interface AgentResponse {
-  /** Texto generado como respuesta al usuario. */
+  /**
+   * Texto generado como respuesta al usuario.
+   */
   text: string;
-  /** Cantidad de tokens consumidos por la entrada (prompt). */
+
+  /**
+   * Cantidad total de tokens consumidos por la entrada.
+   */
   totalInputTokens: number;
-  /** Cantidad de tokens generados en la salida (respuesta). */
+
+  /**
+   * Cantidad total de tokens generados en la salida.
+   */
   totalOutputTokens: number;
-  /** Lista de herramientas utilizadas durante la generación de la respuesta. */
-  // tools?: LlmTool<TToolDefinition>[];
+
+  /**
+   * Lista de herramientas utilizadas durante la ejecución.
+   */
   toolsUsed: string[];
 
+  /**
+   * Cantidad de llamadas a herramientas realizadas en el último turno.
+   */
+  toolCallsLastTurn: number;
+
+  /**
+   * Historial opcional de mensajes de la conversación.
+   */
   conversation?: Message[];
 }

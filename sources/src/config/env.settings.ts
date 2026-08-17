@@ -216,6 +216,7 @@ export class AppConfigService {
        * Evita ciclos indefinidos cuando el modelo solicita herramientas repetidamente.
        */
       max_iterations: this.getIntegerEnvVar("MAX_ITERATIONS", "10"),
+      max_tool_calls: this.getIntegerEnvVar("MAX_TOOL_CALLS", "8"),
       max_tokens_tools: this.getIntegerEnvVar("MAX_TOKENS_TOOLS", "4096"),
     };
   }

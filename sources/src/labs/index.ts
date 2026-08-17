@@ -5,3 +5,4 @@ export * from "./04-read-file-streamin-response.js";
 export * from "./05-chat-cli.js";
 export * from "./06-agentic-loop.js";
 export * from "./07-rag-agent.js";
+export * from "./agent/dev-assistant/init.js";

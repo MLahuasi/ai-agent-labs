@@ -1,8 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { executeFileTool } from "../../../../tools/executor/index.js";
 import type {
   ToolDefinition,
   ToolExecutionError,
+  ToolExecutionHandler,
   ToolExecutionState,
 } from "../../../../types/agent/index.js";
 import { tryGetStringKeyedObject } from "../../../../utils/data/index.js";
@@ -23,16 +23,51 @@ export class AnthropicToolExecutor {
    * @param toolCalls Llamadas a herramientas generadas por Anthropic.
    * @param tools Herramientas disponibles.
    * @param state Estado actual de ejecución.
+   * @param executeTool función que ejecuta las tools registradas
    * @return Resultados producidos por las herramientas.
    */
   async execute(
     toolCalls: AnthropicToolCall[],
     tools: ToolDefinition[],
     state: ToolExecutionState,
+    executeTool: ToolExecutionHandler,
   ): Promise<ExecutedToolResult[]> {
-    return Promise.all(
-      toolCalls.map((toolCall) => this.processToolCall(toolCall, tools, state)),
+    const availableCalls = Math.max(
+      0,
+      state.maxToolCalls - state.toolCallsLastTurn,
     );
+
+    const allowedCalls = toolCalls.slice(0, availableCalls);
+    const rejectedCalls = toolCalls.slice(availableCalls);
+
+    // Cuenta las llamadas solicitadas que entran dentro del presupuesto.
+    state.toolCallsLastTurn += allowedCalls.length;
+
+    // Ejecuta en paralelo únicamente las llamadas permitidas.
+    const results = await Promise.all(
+      allowedCalls.map((toolCall) =>
+        this.processToolCall(toolCall, tools, state, executeTool),
+      ),
+    );
+
+    // Retorna un resultado de error para cada llamada que exceda el límite.
+    const rejectedResults: ExecutedToolResult[] = rejectedCalls.map(
+      (toolCall) => ({
+        callId: toolCall.id,
+        name: toolCall.name,
+        output: this.buildError({
+          success: false,
+          error: "tool_call_limit_reached",
+          operation: toolCall.name,
+          message:
+            `Se alcanzó el límite de ${state.maxToolCalls} ` +
+            "llamadas a herramientas por turno.",
+        }),
+        isError: true,
+      }),
+    );
+
+    return [...results, ...rejectedResults];
   }
 
   /**
@@ -70,12 +105,14 @@ export class AnthropicToolExecutor {
    * @param anthropicToolCall Llamada generada por Anthropic.
    * @param tools Herramientas disponibles.
    * @param state Estado actual de ejecución.
+   * @param executeTool función que ejecuta las tools registradas
    * @return Resultado producido por la herramienta.
    */
   private async processToolCall(
     anthropicToolCall: AnthropicToolCall,
     tools: ToolDefinition[],
     state: ToolExecutionState,
+    executeTool: ToolExecutionHandler,
   ): Promise<ExecutedToolResult> {
     // Convierte los argumentos recibidos a un objeto.
     const params = tryGetStringKeyedObject(anthropicToolCall.input);
@@ -103,7 +140,7 @@ export class AnthropicToolExecutor {
       arguments: params,
     };
 
-    return this.executeToolCall(toolCall, tools, state);
+    return this.executeToolCall(toolCall, tools, state, executeTool);
   }
 
   /**
@@ -112,12 +149,14 @@ export class AnthropicToolExecutor {
    * @param toolCall Llamada que se desea ejecutar.
    * @param tools Herramientas disponibles.
    * @param state Estado actual de ejecución.
+   * @param executeTool función que ejecuta las tools registradas
    * @return Resultado producido por la herramienta.
    */
   private async executeToolCall(
     toolCall: ModelToolCall,
     tools: ToolDefinition[],
     state: ToolExecutionState,
+    executeTool: ToolExecutionHandler,
   ): Promise<ExecutedToolResult> {
     // Busca la herramienta solicitada.
     const currentTool = tools.find((tool) => tool.name === toolCall.name);
@@ -177,10 +216,11 @@ export class AnthropicToolExecutor {
           error: "duplicated_tool_call",
           operation: toolCall.name,
           message:
-            `La herramienta "${toolCall.name}" ya fue ` +
-            "ejecutada con los mismos argumentos. " +
-            "Utiliza el resultado anterior para " +
-            "generar la respuesta final.",
+            `La herramienta "${toolCall.name}" ya fue ejecutada ` +
+            "con exactamente los mismos argumentos. " +
+            "NO vuelvas a ejecutar esta llamada. " +
+            "Utiliza el resultado anterior, elige una herramienta diferente " +
+            "o genera la respuesta final.",
         }),
         isError: true,
       };
@@ -195,7 +235,7 @@ export class AnthropicToolExecutor {
     );
 
     try {
-      let output = await executeFileTool(toolCall.name, toolCall.arguments);
+      let output = await executeTool(toolCall.name, toolCall.arguments);
 
       // Registra la herramienta ejecutada.
       state.toolsUsed.add(toolCall.name);

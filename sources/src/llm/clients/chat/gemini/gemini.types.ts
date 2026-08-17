@@ -39,6 +39,8 @@ export interface ExecutedToolResult {
 
   // Resultado generado por la herramienta.
   output: string;
+
+  isError: boolean;
 }
 
 /**

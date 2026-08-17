@@ -1,10 +1,10 @@
 import Groq from "groq-sdk";
-import { config } from "../../../../config/index.js";
 import { LlmClient } from "../../../../types/app/index.js";
 import {
   AgentRequest,
   AgentResponse,
   ToolDefinition,
+  ToolExecutionState,
 } from "../../../../types/agent/index.js";
 import type { ChatCompletionMessageParam } from "groq-sdk/resources/chat/completions";
 import {
@@ -29,11 +29,22 @@ export class GroqClient implements LlmClient {
   // Ejecutor de las herramientas solicitadas por el modelo.
   private readonly toolExecutor: GroqToolExecutor;
 
-  constructor() {
+  // Modelo utilizado para generar las respuestas.
+  private readonly model: string;
+
+  /**
+   * Crea una nueva instancia del cliente de Groq.
+   *
+   * @param params Configuración necesaria para inicializar el cliente.
+   * @param params.apiKey Clave de API utilizada para autenticar las solicitudes.
+   * @param params.model Modelo de Groq utilizado para generar respuestas.
+   */
+  constructor({ apiKey, model }: { apiKey: string; model: string }) {
     this.client = new Groq({
-      apiKey: config.groqApiKey,
+      apiKey,
     });
 
+    this.model = model;
     this.toolExecutor = new GroqToolExecutor();
   }
 
@@ -53,9 +64,9 @@ export class GroqClient implements LlmClient {
     const convertedTools = toGroqTools(tools);
 
     return this.client.chat.completions.create({
-      model: config.groqModel,
+      model: this.model,
       messages,
-      max_tokens: maxTokens,
+      max_completion_tokens: maxTokens,
 
       ...(convertedTools && {
         tools: convertedTools,
@@ -63,7 +74,7 @@ export class GroqClient implements LlmClient {
         // Permite que el modelo decida si necesita una herramienta.
         tool_choice: "auto" as const,
 
-        // Ejecuta una herramienta por turno.
+        // Deshabilita las llamadas paralelas a herramientas.
         parallel_tool_calls: false,
       }),
     });
@@ -85,14 +96,15 @@ export class GroqClient implements LlmClient {
     const convertedTools = toGroqTools(tools);
 
     return this.client.chat.completions.create({
-      model: config.groqModel,
+      model: this.model,
       stream: true,
       messages,
-      max_tokens: maxTokens,
+      max_completion_tokens: maxTokens,
 
       ...(convertedTools && {
         tools: convertedTools,
         tool_choice: "auto" as const,
+        // Deshabilita las llamadas paralelas a herramientas.
         parallel_tool_calls: false,
       }),
     });
@@ -101,14 +113,18 @@ export class GroqClient implements LlmClient {
   /**
    * Crea el contexto inicial para una conversación con herramientas.
    *
-   * @param request Datos de la conversación.
+   * @param prompt Mensaje inicial enviado por el usuario.
+   * @param systemPrompt Prompt de sistema utilizado durante la conversación.
+   * @param messages Historial opcional de conversación.
+   * @param toolState Estado de ejecución de herramientas del turno actual.
    * @return Contexto inicial de ejecución.
    */
-  private createExecutionContext({
-    prompt,
-    systemPrompt,
-    messages,
-  }: AgentRequest): ExecutionContext {
+  private createExecutionContext(
+    prompt: string,
+    systemPrompt: string,
+    messages: AgentRequest["messages"],
+    toolState: ToolExecutionState,
+  ): ExecutionContext {
     return {
       conversation: buildConversation({
         prompt,
@@ -117,10 +133,7 @@ export class GroqClient implements LlmClient {
       }),
       totalInputTokens: 0,
       totalOutputTokens: 0,
-      toolState: {
-        toolsUsed: new Set<string>(),
-        executedToolCalls: new Set<string>(),
-      },
+      toolState,
     };
   }
 
@@ -162,6 +175,7 @@ export class GroqClient implements LlmClient {
       totalInputTokens: context.totalInputTokens,
       totalOutputTokens: context.totalOutputTokens,
       toolsUsed: [...context.toolState.toolsUsed],
+      toolCallsLastTurn: context.toolState.toolCallsLastTurn,
     };
   }
 
@@ -169,10 +183,15 @@ export class GroqClient implements LlmClient {
    * Genera una respuesta completa y procesa las herramientas solicitadas.
    *
    * @param request Datos necesarios para generar la respuesta.
-   * @param request.prompt Mensaje inicial.
-   * @param request.systemPrompt Instrucciones opcionales.
-   * @param request.messages Historial opcional.
-   * @param request.tools Herramientas opcionales.
+   * @param request.prompt Mensaje inicial enviado por el usuario.
+   * @param request.systemPrompt Instrucciones opcionales del sistema.
+   * @param request.messages Historial opcional de conversación.
+   * @param request.tools Herramientas opcionales disponibles para el modelo.
+   * @param request.executeTool Función opcional utilizada para ejecutar herramientas.
+   * @param request.toolState Estado opcional de ejecución de herramientas del turno actual.
+   * @param request.maxIterations Máximo de iteraciones permitidas durante una ejecución con herramientas.
+   * @param request.maxTokens Máximo de tokens permitidos en una respuesta sin herramientas.
+   * @param request.maxTokensTools Máximo de tokens permitidos durante una ejecución con herramientas.
    * @return Respuesta generada por el modelo.
    */
   async ask({
@@ -180,11 +199,16 @@ export class GroqClient implements LlmClient {
     systemPrompt,
     messages,
     tools,
+    executeTool,
+    toolState,
+    maxIterations,
+    maxTokens,
+    maxTokensTools,
   }: AgentRequest): Promise<AgentResponse> {
     // Ejecuta una única consulta cuando no existen herramientas.
     if (!tools?.length) {
       const response = await this.create(
-        config.max_tokens,
+        maxTokens,
         buildConversation({
           prompt,
           systemPrompt,
@@ -192,32 +216,52 @@ export class GroqClient implements LlmClient {
         }),
       );
 
-      const text = response.choices[0]?.message?.content;
+      const text =
+        response.choices[0]?.message?.content?.trim() ||
+        "Groq no retornó contenido de texto en la respuesta";
 
       return {
-        text: text ?? "Groq no retornó contenido de texto en la respuesta",
+        text,
         totalInputTokens: response.usage?.prompt_tokens ?? 0,
         totalOutputTokens: response.usage?.completion_tokens ?? 0,
         toolsUsed: [],
+        toolCallsLastTurn: 0,
       };
     }
 
+    if (!executeTool) {
+      throw new Error(
+        "Se proporcionaron tools pero no un ejecutor de herramientas.",
+      );
+    }
+
+    if (!toolState) {
+      throw new Error(
+        "Se proporcionaron tools pero no un estado de ejecución.",
+      );
+    }
+
     // Inicializa el contexto compartido entre las iteraciones.
-    const context = this.createExecutionContext({
+    const context = this.createExecutionContext(
       prompt,
-      systemPrompt,
+      systemPrompt ?? "",
       messages,
-      tools,
-    });
+      toolState,
+    );
 
     // Ejecuta iteraciones hasta obtener una respuesta final o alcanzar el límite.
-    for (let iteration = 0; iteration < config.max_iterations; iteration++) {
+    for (let iteration = 0; iteration < maxIterations; iteration++) {
       console.log(`\nPensando... (iteración ${iteration + 1})`);
 
+      const availableTools =
+        context.toolState.toolCallsLastTurn < context.toolState.maxToolCalls
+          ? tools
+          : undefined;
+
       const response = await this.create(
-        config.max_tokens,
+        maxTokensTools,
         context.conversation,
-        tools,
+        availableTools,
       );
 
       this.addUsage(context, response.usage);
@@ -260,17 +304,18 @@ export class GroqClient implements LlmClient {
         toolCalls,
         tools,
         context.toolState,
+        executeTool,
       );
 
       // Agrega los resultados para la siguiente iteración.
       this.toolExecutor.appendResults(context.conversation, results);
     }
 
-    console.warn(`Límite de ${config.max_iterations} iteraciones alcanzado`);
+    console.warn(`Límite de ${maxIterations} iteraciones alcanzado`);
 
     return this.buildResponse(
       `Lo siento, no pude completar la tarea en ` +
-        `${config.max_iterations} iteraciones. ` +
+        `${maxIterations} iteraciones. ` +
         "Intenta una pregunta más específica.",
       context,
     );
@@ -280,10 +325,15 @@ export class GroqClient implements LlmClient {
    * Genera una respuesta mediante streaming y procesa las herramientas solicitadas.
    *
    * @param request Datos necesarios para generar la respuesta.
-   * @param request.prompt Mensaje inicial.
-   * @param request.systemPrompt Instrucciones opcionales.
-   * @param request.messages Historial opcional.
-   * @param request.tools Herramientas opcionales.
+   * @param request.prompt Mensaje inicial enviado por el usuario.
+   * @param request.systemPrompt Instrucciones opcionales del sistema.
+   * @param request.messages Historial opcional de conversación.
+   * @param request.tools Herramientas opcionales disponibles para el modelo.
+   * @param request.executeTool Función opcional utilizada para ejecutar herramientas.
+   * @param request.toolState Estado opcional de ejecución de herramientas del turno actual.
+   * @param request.maxTokens Máximo de tokens permitidos en una respuesta sin herramientas.
+   * @param request.maxIterations Máximo de iteraciones permitidas durante una ejecución con herramientas.
+   * @param request.maxTokensTools Máximo de tokens permitidos durante una ejecución con herramientas.
    * @return Respuesta generada por el modelo.
    */
   async stream({
@@ -291,6 +341,11 @@ export class GroqClient implements LlmClient {
     systemPrompt,
     messages,
     tools,
+    executeTool,
+    toolState,
+    maxTokens,
+    maxIterations,
+    maxTokensTools,
   }: AgentRequest): Promise<AgentResponse> {
     // Ejecuta un único stream cuando no existen herramientas.
     if (!tools?.length) {
@@ -299,7 +354,7 @@ export class GroqClient implements LlmClient {
       let completionTokens = 0;
 
       const stream = await this.createStream(
-        config.max_tokens,
+        maxTokens,
         buildConversation({
           prompt,
           systemPrompt,
@@ -310,9 +365,6 @@ export class GroqClient implements LlmClient {
       // Procesa los fragmentos generados durante el stream.
       for await (const chunk of stream) {
         const content = chunk.choices[0]?.delta?.content ?? "";
-
-        process.stdout.write(content);
-
         fullResponse += content;
 
         const usage = chunk.x_groq?.usage;
@@ -324,26 +376,41 @@ export class GroqClient implements LlmClient {
         }
       }
 
-      process.stdout.write("\n");
+      const text =
+        fullResponse.trim() ||
+        "Groq no retornó contenido de texto en la respuesta";
 
       return {
-        text: fullResponse,
+        text,
         totalInputTokens: promptTokens,
         totalOutputTokens: completionTokens,
         toolsUsed: [],
+        toolCallsLastTurn: 0,
       };
     }
 
+    if (!executeTool) {
+      throw new Error(
+        "Se proporcionaron tools pero no un ejecutor de herramientas.",
+      );
+    }
+
+    if (!toolState) {
+      throw new Error(
+        "Se proporcionaron tools pero no un estado de ejecución.",
+      );
+    }
+
     // Inicializa el contexto compartido entre las iteraciones.
-    const context = this.createExecutionContext({
+    const context = this.createExecutionContext(
       prompt,
-      systemPrompt,
+      systemPrompt ?? "",
       messages,
-      tools,
-    });
+      toolState,
+    );
 
     // Ejecuta una nueva generación en streaming por cada iteración.
-    for (let iteration = 0; iteration < config.max_iterations; iteration++) {
+    for (let iteration = 0; iteration < maxIterations; iteration++) {
       console.log(`\nPensando... (iteración ${iteration + 1})`);
 
       let streamedText = "";
@@ -354,10 +421,15 @@ export class GroqClient implements LlmClient {
       let promptTokens = 0;
       let completionTokens = 0;
 
+      const availableTools =
+        context.toolState.toolCallsLastTurn < context.toolState.maxToolCalls
+          ? tools
+          : undefined;
+
       const stream = await this.createStream(
-        config.max_tokens,
+        maxTokensTools,
         context.conversation,
-        tools,
+        availableTools,
       );
 
       // Procesa los fragmentos generados durante la iteración.
@@ -367,7 +439,6 @@ export class GroqClient implements LlmClient {
         const content = delta?.content ?? "";
 
         if (content) {
-          process.stdout.write(content);
           streamedText += content;
         }
 
@@ -422,8 +493,6 @@ export class GroqClient implements LlmClient {
       if (toolCalls.length === 0) {
         const text = streamedText.trim();
 
-        process.stdout.write("\n");
-
         if (!text) {
           return this.buildResponse(
             "Groq no retornó texto ni llamadas a herramientas.",
@@ -453,17 +522,18 @@ export class GroqClient implements LlmClient {
         toolCalls,
         tools,
         context.toolState,
+        executeTool,
       );
 
       // Agrega los resultados para la siguiente iteración.
       this.toolExecutor.appendResults(context.conversation, results);
     }
 
-    console.warn(`Límite de ${config.max_iterations} iteraciones alcanzado`);
+    console.warn(`Límite de ${maxIterations} iteraciones alcanzado`);
 
     return this.buildResponse(
       `Lo siento, no pude completar la tarea en ` +
-        `${config.max_iterations} iteraciones. ` +
+        `${maxIterations} iteraciones. ` +
         "Intenta una pregunta más específica.",
       context,
     );

@@ -4,9 +4,9 @@ import {
   AgentRequest,
   AgentResponse,
   ToolDefinition,
+  ToolExecutionState,
 } from "../../../../types/agent/index.js";
 
-import { config } from "../../../../config/index.js";
 import { LlmClient } from "../../../../types/app/index.js";
 
 import {
@@ -31,11 +31,21 @@ export class AnthropicClient implements LlmClient {
   // Ejecutor de las herramientas solicitadas por el modelo.
   private readonly toolExecutor: AnthropicToolExecutor;
 
-  constructor() {
-    this.client = new Anthropic({
-      apiKey: config.anthropicApiKey,
-    });
+  // Modelo utilizado para generar las respuestas.
+  private readonly model: string;
 
+  /**
+   * Crea una nueva instancia del cliente de Anthropic.
+   *
+   * @param params Configuración necesaria para inicializar el cliente.
+   * @param params.apiKey Clave de API utilizada para autenticar las solicitudes.
+   * @param params.model Modelo de Anthropic utilizado para generar respuestas.
+   */
+  constructor({ apiKey, model }: { apiKey: string; model: string }) {
+    this.client = new Anthropic({
+      apiKey,
+    });
+    this.model = model;
     this.toolExecutor = new AnthropicToolExecutor();
   }
 
@@ -55,7 +65,7 @@ export class AnthropicClient implements LlmClient {
     tools?: ToolDefinition[],
   ) {
     return this.client.messages.create({
-      model: config.anthropicModel,
+      model: this.model,
       max_tokens: maxTokens,
 
       ...(systemPrompt && {
@@ -83,7 +93,7 @@ export class AnthropicClient implements LlmClient {
     tools?: ToolDefinition[],
   ) {
     return this.client.messages.stream({
-      model: config.anthropicModel,
+      model: this.model,
       max_tokens: maxTokens,
 
       ...(systemPrompt && {
@@ -100,20 +110,19 @@ export class AnthropicClient implements LlmClient {
    *
    * @param prompt Mensaje inicial enviado por el usuario.
    * @param messages Historial opcional de conversación.
+   * @param toolState Estado de ejecución de herramientas del turno actual.
    * @return Contexto inicial de ejecución.
    */
   private createExecutionContext(
     prompt: string,
-    messages?: AgentRequest["messages"],
+    messages: AgentRequest["messages"],
+    toolState: ToolExecutionState,
   ): ExecutionContext {
     return {
       messages: buildMessages(prompt, messages),
       totalInputTokens: 0,
       totalOutputTokens: 0,
-      toolState: {
-        toolsUsed: new Set<string>(),
-        executedToolCalls: new Set<string>(),
-      },
+      toolState,
     };
   }
 
@@ -152,6 +161,7 @@ export class AnthropicClient implements LlmClient {
       totalInputTokens: context.totalInputTokens,
       totalOutputTokens: context.totalOutputTokens,
       toolsUsed: [...context.toolState.toolsUsed],
+      toolCallsLastTurn: context.toolState.toolCallsLastTurn,
     };
   }
 
@@ -160,9 +170,14 @@ export class AnthropicClient implements LlmClient {
    *
    * @param request Datos necesarios para generar la respuesta.
    * @param request.prompt Mensaje inicial enviado por el usuario.
-   * @param request.systemPrompt Instrucciones opcionales.
+   * @param request.systemPrompt Instrucciones opcionales del sistema.
    * @param request.messages Historial opcional de conversación.
-   * @param request.tools Herramientas opcionales disponibles.
+   * @param request.tools Herramientas opcionales disponibles para el modelo.
+   * @param request.executeTool Función opcional utilizada para ejecutar herramientas.
+   * @param request.toolState Estado opcional de ejecución de herramientas del turno actual.
+   * @param request.maxIterations Máximo de iteraciones permitidas durante una ejecución con herramientas.
+   * @param request.maxTokens Máximo de tokens permitidos en una respuesta sin herramientas.
+   * @param request.maxTokensTools Máximo de tokens permitidos durante una ejecución con herramientas.
    * @return Respuesta generada por el modelo.
    */
   async ask({
@@ -170,47 +185,61 @@ export class AnthropicClient implements LlmClient {
     systemPrompt,
     messages,
     tools,
+    executeTool,
+    toolState,
+    maxIterations,
+    maxTokens,
+    maxTokensTools,
   }: AgentRequest): Promise<AgentResponse> {
     // Ejecuta una única consulta cuando no existen herramientas.
     if (!tools?.length) {
       const response = await this.create(
         systemPrompt ?? "",
-        config.max_tokens,
+        maxTokens,
         buildMessages(prompt, messages),
       );
 
       const text = getAnthropicResponseText(response.content);
 
-      if (!text) {
-        return {
-          text: "Anthropic no retornó contenido de texto en la respuesta",
-          totalInputTokens: response.usage.input_tokens,
-          totalOutputTokens: response.usage.output_tokens,
-          toolsUsed: [],
-        };
-      }
-
       return {
-        text,
-        totalInputTokens: response.usage.input_tokens,
-        totalOutputTokens: response.usage.output_tokens,
+        text: text || "Anthropic no retornó contenido de texto en la respuesta",
+        totalInputTokens: response.usage.input_tokens ?? 0,
+        totalOutputTokens: response.usage.output_tokens ?? 0,
         toolsUsed: [],
+        toolCallsLastTurn: 0,
       };
     }
 
+    if (!executeTool) {
+      throw new Error(
+        "Se proporcionaron tools pero no un ejecutor de herramientas.",
+      );
+    }
+
+    if (!toolState) {
+      throw new Error(
+        "Se proporcionaron tools pero no un estado de ejecución.",
+      );
+    }
+
     // Inicializa el contexto compartido entre las iteraciones.
-    const context = this.createExecutionContext(prompt, messages);
+    const context = this.createExecutionContext(prompt, messages, toolState);
 
     // Ejecuta iteraciones hasta obtener una respuesta final o alcanzar el límite.
-    for (let iteration = 0; iteration < config.max_iterations; iteration++) {
+    for (let iteration = 0; iteration < maxIterations; iteration++) {
       console.log(`\nPensando... (iteración ${iteration + 1})`);
+
+      const availableTools =
+        context.toolState.toolCallsLastTurn < context.toolState.maxToolCalls
+          ? tools
+          : undefined;
 
       // Envía el historial acumulado al modelo.
       const response = await this.create(
         systemPrompt ?? "",
-        config.max_tokens_tools,
+        maxTokensTools,
         context.messages,
-        tools,
+        availableTools,
       );
 
       this.addUsage(context, response.usage);
@@ -258,6 +287,7 @@ export class AnthropicClient implements LlmClient {
           toolCalls,
           tools,
           context.toolState,
+          executeTool,
         );
 
         // Agrega los resultados para la siguiente iteración.
@@ -279,11 +309,11 @@ export class AnthropicClient implements LlmClient {
       );
     }
 
-    console.warn(`Límite de ${config.max_iterations} iteraciones alcanzado`);
+    console.warn(`Límite de ${maxIterations} iteraciones alcanzado`);
 
     return this.buildResponse(
       `Lo siento, no pude completar la tarea en ` +
-        `${config.max_iterations} iteraciones. ` +
+        `${maxIterations} iteraciones. ` +
         "Intenta una pregunta más específica.",
       context,
     );
@@ -294,9 +324,14 @@ export class AnthropicClient implements LlmClient {
    *
    * @param request Datos necesarios para generar la respuesta.
    * @param request.prompt Mensaje inicial enviado por el usuario.
-   * @param request.systemPrompt Instrucciones opcionales.
+   * @param request.systemPrompt Instrucciones opcionales del sistema.
    * @param request.messages Historial opcional de conversación.
-   * @param request.tools Herramientas opcionales disponibles.
+   * @param request.tools Herramientas opcionales disponibles para el modelo.
+   * @param request.executeTool Función opcional utilizada para ejecutar herramientas.
+   * @param request.toolState Estado opcional de ejecución de herramientas del turno actual.
+   * @param request.maxTokens Máximo de tokens permitidos en una respuesta sin herramientas.
+   * @param request.maxIterations Máximo de iteraciones permitidas durante una ejecución con herramientas.
+   * @param request.maxTokensTools Máximo de tokens permitidos durante una ejecución con herramientas.
    * @return Respuesta generada por el modelo.
    */
   async stream({
@@ -304,6 +339,11 @@ export class AnthropicClient implements LlmClient {
     systemPrompt,
     messages,
     tools,
+    executeTool,
+    toolState,
+    maxTokens,
+    maxIterations,
+    maxTokensTools,
   }: AgentRequest): Promise<AgentResponse> {
     // Ejecuta un único stream cuando no existen herramientas.
     if (!tools?.length) {
@@ -311,49 +351,68 @@ export class AnthropicClient implements LlmClient {
 
       const stream = await this.createStream(
         systemPrompt ?? "",
-        config.max_tokens,
+        maxTokens,
         buildMessages(prompt, messages),
       );
 
       // Acumula cada fragmento de texto recibido.
       stream.on("text", (chunk) => {
-        process.stdout.write(chunk);
-
         fullResponse += chunk;
       });
 
       const finalMessage = await stream.finalMessage();
 
-      process.stdout.write("\n");
+      const finalText = getAnthropicResponseText(finalMessage.content);
+
+      const text =
+        fullResponse.trim() ||
+        finalText?.trim() ||
+        "Anthropic no retornó contenido de texto en la respuesta";
 
       return {
-        text: fullResponse,
+        text,
         totalInputTokens: finalMessage.usage.input_tokens,
         totalOutputTokens: finalMessage.usage.output_tokens,
         toolsUsed: [],
+        toolCallsLastTurn: 0,
       };
     }
 
+    if (!executeTool) {
+      throw new Error(
+        "Se proporcionaron tools pero no un ejecutor de herramientas.",
+      );
+    }
+
+    if (!toolState) {
+      throw new Error(
+        "Se proporcionaron tools pero no un estado de ejecución.",
+      );
+    }
+
     // Inicializa el contexto compartido entre las iteraciones.
-    const context = this.createExecutionContext(prompt, messages);
+    const context = this.createExecutionContext(prompt, messages, toolState);
 
     // Ejecuta una nueva generación en streaming por cada iteración.
-    for (let iteration = 0; iteration < config.max_iterations; iteration++) {
+    for (let iteration = 0; iteration < maxIterations; iteration++) {
       console.log(`\nPensando... (iteración ${iteration + 1})`);
+
+      const availableTools =
+        context.toolState.toolCallsLastTurn < context.toolState.maxToolCalls
+          ? tools
+          : undefined;
 
       // Acumula el texto generado durante la iteración actual.
       let streamedText = "";
 
       const stream = await this.createStream(
         systemPrompt ?? "",
-        config.max_tokens_tools,
+        maxTokensTools,
         context.messages,
-        tools,
+        availableTools,
       );
 
       stream.on("text", (chunk) => {
-        process.stdout.write(chunk);
-
         streamedText += chunk;
       });
 
@@ -376,8 +435,6 @@ export class AnthropicClient implements LlmClient {
       // Retorna el contenido cuando el modelo finaliza la respuesta.
       if (response.stop_reason === "end_turn") {
         const text = streamedText.trim() || content?.trim();
-
-        process.stdout.write("\n");
 
         if (!text) {
           return this.buildResponse(
@@ -409,6 +466,7 @@ export class AnthropicClient implements LlmClient {
           toolCalls,
           tools,
           context.toolState,
+          executeTool,
         );
 
         // Agrega los resultados para la siguiente iteración.
@@ -431,11 +489,11 @@ export class AnthropicClient implements LlmClient {
       );
     }
 
-    console.warn(`Límite de ${config.max_iterations} iteraciones alcanzado`);
+    console.warn(`Límite de ${maxIterations} iteraciones alcanzado`);
 
     return this.buildResponse(
       `Lo siento, no pude completar la tarea en ` +
-        `${config.max_iterations} iteraciones. ` +
+        `${maxIterations} iteraciones. ` +
         "Intenta una pregunta más específica.",
       context,
     );

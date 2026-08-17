@@ -1,12 +1,11 @@
 import { GoogleGenAI, type Content } from "@google/genai";
-
-import { config } from "../../../../config/index.js";
 import { LlmClient } from "../../../../types/app/index.js";
 
 import {
   AgentRequest,
   AgentResponse,
   ToolDefinition,
+  ToolExecutionState,
 } from "../../../../types/agent/index.js";
 
 import { buildContents, toGeminiTools } from "./internal/index.js";
@@ -25,11 +24,22 @@ export class GeminiClient implements LlmClient {
   // Ejecutor de las herramientas solicitadas por el modelo.
   private readonly toolExecutor: GeminiToolExecutor;
 
-  constructor() {
+  // Modelo utilizado para generar las respuestas.
+  private readonly model: string;
+
+  /**
+   * Crea una nueva instancia del cliente de Gemini.
+   *
+   * @param params Configuración necesaria para inicializar el cliente.
+   * @param params.apiKey Clave de API utilizada para autenticar las solicitudes.
+   * @param params.model Modelo de Gemini utilizado para generar respuestas.
+   */
+  constructor({ apiKey, model }: { apiKey: string; model: string }) {
     this.client = new GoogleGenAI({
-      apiKey: config.geminiApiKey,
+      apiKey,
     });
 
+    this.model = model;
     this.toolExecutor = new GeminiToolExecutor();
   }
 
@@ -49,7 +59,7 @@ export class GeminiClient implements LlmClient {
     tools?: ToolDefinition[],
   ) {
     return this.client.models.generateContent({
-      model: config.geminiModel,
+      model: this.model,
       contents,
 
       config: {
@@ -82,7 +92,7 @@ export class GeminiClient implements LlmClient {
     tools?: ToolDefinition[],
   ) {
     return this.client.models.generateContentStream({
-      model: config.geminiModel,
+      model: this.model,
       contents,
 
       config: {
@@ -104,11 +114,13 @@ export class GeminiClient implements LlmClient {
    *
    * @param prompt Mensaje inicial enviado por el usuario.
    * @param messages Historial opcional de conversación.
+   * @param toolState Estado de ejecución de herramientas del turno actual.
    * @return Contexto inicial de ejecución.
    */
   private createExecutionContext(
     prompt: string,
-    messages?: AgentRequest["messages"],
+    messages: AgentRequest["messages"],
+    toolState: ToolExecutionState,
   ): ExecutionContext {
     return {
       contents: buildContents({
@@ -117,10 +129,7 @@ export class GeminiClient implements LlmClient {
       }),
       totalInputTokens: 0,
       totalOutputTokens: 0,
-      toolState: {
-        toolsUsed: new Set<string>(),
-        executedToolCalls: new Set<string>(),
-      },
+      toolState,
     };
   }
 
@@ -161,6 +170,7 @@ export class GeminiClient implements LlmClient {
       totalInputTokens: context.totalInputTokens,
       totalOutputTokens: context.totalOutputTokens,
       toolsUsed: [...context.toolState.toolsUsed],
+      toolCallsLastTurn: context.toolState.toolCallsLastTurn,
     };
   }
 
@@ -171,7 +181,12 @@ export class GeminiClient implements LlmClient {
    * @param request.prompt Mensaje inicial enviado por el usuario.
    * @param request.systemPrompt Instrucciones opcionales para el modelo.
    * @param request.messages Historial opcional de la conversación.
-   * @param request.tools Herramientas opcionales disponibles.
+   * @param request.tools Herramientas opcionales disponibles para el modelo.
+   * @param request.executeTool Función opcional utilizada para ejecutar herramientas.
+   * @param request.toolState Estado opcional de ejecución de herramientas del turno actual.
+   * @param request.maxIterations Máximo de iteraciones permitidas durante una ejecución con herramientas.
+   * @param request.maxTokens Máximo de tokens permitidos en una respuesta sin herramientas.
+   * @param request.maxTokensTools Máximo de tokens permitidos durante una ejecución con herramientas.
    * @return Respuesta generada por el modelo.
    */
   async ask({
@@ -179,6 +194,11 @@ export class GeminiClient implements LlmClient {
     systemPrompt,
     messages,
     tools,
+    executeTool,
+    toolState,
+    maxIterations,
+    maxTokens,
+    maxTokensTools,
   }: AgentRequest): Promise<AgentResponse> {
     // Ejecuta una única consulta cuando no existen herramientas.
     if (!tools?.length) {
@@ -187,7 +207,7 @@ export class GeminiClient implements LlmClient {
           prompt,
           messages,
         }),
-        config.max_tokens,
+        maxTokens,
         systemPrompt,
       );
 
@@ -198,21 +218,39 @@ export class GeminiClient implements LlmClient {
         totalInputTokens: response.usageMetadata?.promptTokenCount ?? 0,
         totalOutputTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
         toolsUsed: [],
+        toolCallsLastTurn: 0,
       };
     }
 
+    if (!executeTool) {
+      throw new Error(
+        "Se proporcionaron tools pero no un ejecutor de herramientas.",
+      );
+    }
+
+    if (!toolState) {
+      throw new Error(
+        "Se proporcionaron tools pero no un estado de ejecución.",
+      );
+    }
+
     // Inicializa el contexto compartido entre las iteraciones.
-    const context = this.createExecutionContext(prompt, messages);
+    const context = this.createExecutionContext(prompt, messages, toolState);
 
     // Ejecuta iteraciones hasta obtener una respuesta final o alcanzar el límite.
-    for (let iteration = 0; iteration < config.max_iterations; iteration++) {
+    for (let iteration = 0; iteration < maxIterations; iteration++) {
       console.log(`\nPensando... (iteración ${iteration + 1})`);
+
+      const availableTools =
+        context.toolState.toolCallsLastTurn < context.toolState.maxToolCalls
+          ? tools
+          : undefined;
 
       const response = await this.create(
         context.contents,
-        config.max_tokens_tools,
+        maxTokensTools,
         systemPrompt,
-        tools,
+        availableTools,
       );
 
       this.addUsage(context, response.usageMetadata);
@@ -261,17 +299,18 @@ export class GeminiClient implements LlmClient {
         toolCalls,
         tools,
         context.toolState,
+        executeTool,
       );
 
       // Agrega los resultados para la siguiente iteración.
       this.toolExecutor.appendResults(context.contents, results);
     }
 
-    console.warn(`Límite de ${config.max_iterations} iteraciones alcanzado`);
+    console.warn(`Límite de ${maxIterations} iteraciones alcanzado`);
 
     return this.buildResponse(
       `Lo siento, no pude completar la tarea en ` +
-        `${config.max_iterations} iteraciones. ` +
+        `${maxIterations} iteraciones. ` +
         "Intenta una pregunta más específica.",
       context,
     );
@@ -284,7 +323,12 @@ export class GeminiClient implements LlmClient {
    * @param request.prompt Mensaje inicial enviado por el usuario.
    * @param request.systemPrompt Instrucciones opcionales para el modelo.
    * @param request.messages Historial opcional de la conversación.
-   * @param request.tools Herramientas opcionales disponibles.
+   * @param request.tools Herramientas opcionales disponibles para el modelo.
+   * @param request.executeTool Función opcional utilizada para ejecutar herramientas.
+   * @param request.toolState Estado opcional de ejecución de herramientas del turno actual.
+   * @param request.maxTokens Máximo de tokens permitidos en una respuesta sin herramientas.
+   * @param request.maxIterations Máximo de iteraciones permitidas durante una ejecución con herramientas.
+   * @param request.maxTokensTools Máximo de tokens permitidos durante una ejecución con herramientas.
    * @return Respuesta generada por el modelo.
    */
   async stream({
@@ -292,6 +336,11 @@ export class GeminiClient implements LlmClient {
     systemPrompt,
     messages,
     tools,
+    executeTool,
+    toolState,
+    maxTokens,
+    maxIterations,
+    maxTokensTools,
   }: AgentRequest): Promise<AgentResponse> {
     // Ejecuta un único stream cuando no existen herramientas.
     if (!tools?.length) {
@@ -304,15 +353,13 @@ export class GeminiClient implements LlmClient {
           prompt,
           messages,
         }),
-        config.max_tokens,
+        maxTokens,
         systemPrompt,
       );
 
       // Procesa cada fragmento generado durante el stream.
       for await (const chunk of stream) {
         const text = chunk.text ?? "";
-
-        process.stdout.write(text);
 
         fullResponse += text;
 
@@ -324,21 +371,36 @@ export class GeminiClient implements LlmClient {
           chunk.usageMetadata?.candidatesTokenCount ?? totalOutputTokens;
       }
 
-      process.stdout.write("\n");
+      const text =
+        fullResponse.trim() ||
+        "Gemini no retornó contenido de texto en la respuesta";
 
       return {
-        text: fullResponse,
+        text,
         totalInputTokens,
         totalOutputTokens,
         toolsUsed: [],
+        toolCallsLastTurn: 0,
       };
     }
 
+    if (!executeTool) {
+      throw new Error(
+        "Se proporcionaron tools pero no un ejecutor de herramientas.",
+      );
+    }
+
+    if (!toolState) {
+      throw new Error(
+        "Se proporcionaron tools pero no un estado de ejecución.",
+      );
+    }
+
     // Inicializa el contexto compartido entre las iteraciones.
-    const context = this.createExecutionContext(prompt, messages);
+    const context = this.createExecutionContext(prompt, messages, toolState);
 
     // Ejecuta una nueva generación en streaming por cada iteración.
-    for (let iteration = 0; iteration < config.max_iterations; iteration++) {
+    for (let iteration = 0; iteration < maxIterations; iteration++) {
       console.log(`\nPensando... (iteración ${iteration + 1})`);
 
       let streamedText = "";
@@ -354,11 +416,16 @@ export class GeminiClient implements LlmClient {
       let inputTokens = 0;
       let outputTokens = 0;
 
+      const availableTools =
+        context.toolState.toolCallsLastTurn < context.toolState.maxToolCalls
+          ? tools
+          : undefined;
+
       const stream = await this.createStream(
         context.contents,
-        config.max_tokens_tools,
+        maxTokensTools,
         systemPrompt,
-        tools,
+        availableTools,
       );
 
       // Procesa los fragmentos generados durante la iteración.
@@ -366,7 +433,6 @@ export class GeminiClient implements LlmClient {
         const text = chunk.text ?? "";
 
         if (text) {
-          process.stdout.write(text);
           streamedText += text;
         }
 
@@ -383,11 +449,16 @@ export class GeminiClient implements LlmClient {
 
         // Acumula las llamadas a herramientas encontradas.
         for (const toolCall of chunk.functionCalls ?? []) {
-          toolCalls.push({
-            id: toolCall.id,
-            name: toolCall.name,
-            args: toolCall.args,
-          });
+          const exists = toolCalls.some(
+            (current) => current.id === toolCall.id,
+          );
+
+          if (!exists)
+            toolCalls.push({
+              id: toolCall.id,
+              name: toolCall.name,
+              args: toolCall.args,
+            });
         }
 
         // Actualiza el consumo de tokens disponible en el fragmento.
@@ -404,8 +475,6 @@ export class GeminiClient implements LlmClient {
       // Retorna el texto cuando no existen llamadas a herramientas.
       if (toolCalls.length === 0) {
         const text = streamedText.trim();
-
-        process.stdout.write("\n");
 
         if (!text) {
           console.warn("Gemini no retornó texto ni llamadas a herramientas.");
@@ -439,17 +508,18 @@ export class GeminiClient implements LlmClient {
         toolCalls,
         tools,
         context.toolState,
+        executeTool,
       );
 
       // Agrega los resultados para la siguiente iteración.
       this.toolExecutor.appendResults(context.contents, results);
     }
 
-    console.warn(`Límite de ${config.max_iterations} iteraciones alcanzado`);
+    console.warn(`Límite de ${maxIterations} iteraciones alcanzado`);
 
     return this.buildResponse(
       `Lo siento, no pude completar la tarea en ` +
-        `${config.max_iterations} iteraciones. ` +
+        `${maxIterations} iteraciones. ` +
         "Intenta una pregunta más específica.",
       context,
     );

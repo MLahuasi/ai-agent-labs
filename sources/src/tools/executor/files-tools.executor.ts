@@ -1,15 +1,25 @@
 import { serialize } from "../../utils/response/index.js";
 import { FileSystemToolActions } from "../actions/index.js";
 
+/**
+ * Ejecuta una herramienta relacionada con el sistema de archivos.
+ *
+ * @param name Nombre de la herramienta que se desea ejecutar.
+ * @param params Parámetros recibidos por la herramienta.
+ * @return Respuesta serializada con el resultado de la operación.
+ */
 export async function executeFileTool(
   name: string,
   params: Record<string, unknown>,
 ): Promise<string> {
   try {
+    // Determina qué herramienta debe ejecutarse.
     switch (name) {
       case "list_files": {
+        // Obtiene los parámetros de listado.
         const { path, extension } = params;
 
+        // Valida que path sea un string no vacío cuando se proporciona.
         if (path !== undefined && (typeof path !== "string" || !path.trim())) {
           return serialize({
             success: false,
@@ -17,6 +27,7 @@ export async function executeFileTool(
           });
         }
 
+        // Valida que extension sea un string no vacío cuando se proporciona.
         if (
           extension !== undefined &&
           (typeof extension !== "string" || !extension.trim())
@@ -27,6 +38,7 @@ export async function executeFileTool(
           });
         }
 
+        // Ejecuta el listado de archivos.
         return FileSystemToolActions.getListFiles({
           path: typeof path === "string" ? path.trim() : ".",
           extension:
@@ -35,8 +47,10 @@ export async function executeFileTool(
       }
 
       case "find_file": {
+        // Obtiene los parámetros de búsqueda.
         const { file_name, path } = params;
 
+        // Valida que file_name sea un string no vacío.
         if (typeof file_name !== "string" || !file_name.trim()) {
           return serialize({
             success: false,
@@ -45,6 +59,7 @@ export async function executeFileTool(
           });
         }
 
+        // Valida que path sea un string no vacío cuando se proporciona.
         if (path !== undefined && (typeof path !== "string" || !path.trim())) {
           return serialize({
             success: false,
@@ -52,6 +67,7 @@ export async function executeFileTool(
           });
         }
 
+        // Ejecuta la búsqueda del archivo.
         return FileSystemToolActions.findFile({
           file_name: file_name.trim(),
           path: typeof path === "string" ? path.trim() : undefined,
@@ -59,8 +75,10 @@ export async function executeFileTool(
       }
 
       case "read_file": {
+        // Obtiene la ruta del archivo.
         const { file_path } = params;
 
+        // Valida que file_path sea un string no vacío.
         if (typeof file_path !== "string" || !file_path.trim()) {
           return serialize({
             success: false,
@@ -69,14 +87,17 @@ export async function executeFileTool(
           });
         }
 
+        // Ejecuta la lectura del archivo.
         return FileSystemToolActions.readFile({
           file_path: file_path.trim(),
         });
       }
 
       case "search_file_content": {
+        // Obtiene los parámetros de búsqueda de contenido.
         const { searchText, path } = params;
 
+        // Valida que searchText sea un string no vacío.
         if (typeof searchText !== "string" || !searchText.trim()) {
           return serialize({
             success: false,
@@ -85,6 +106,7 @@ export async function executeFileTool(
           });
         }
 
+        // Valida que path sea un string no vacío cuando se proporciona.
         if (path !== undefined && (typeof path !== "string" || !path.trim())) {
           return serialize({
             success: false,
@@ -92,17 +114,22 @@ export async function executeFileTool(
           });
         }
 
+        // Ejecuta la búsqueda dentro del contenido de los archivos.
         const result = await FileSystemToolActions.searchFileContent({
           searchText: searchText.trim(),
           path: typeof path === "string" ? path.trim() : undefined,
         });
+
         // console.log({
         //   matches: result,
         // });
+
+        // Retorna el resultado de la búsqueda.
         return result;
       }
 
       default:
+        // Retorna un error cuando la herramienta no existe.
         return serialize({
           success: false,
           error: `Tool desconocida "${name}".`,
@@ -115,6 +142,7 @@ export async function executeFileTool(
         });
     }
   } catch (error) {
+    // Retorna un error producido durante la ejecución.
     return serialize({
       success: false,
       error:

@@ -6,7 +6,10 @@ export function buildConversation({
   prompt,
   systemPrompt,
   messages,
-}: AgentRequest): OllamaMessage[] {
+}: Pick<
+  AgentRequest,
+  "prompt" | "messages" | "systemPrompt"
+>): OllamaMessage[] {
   const history = [...(messages ?? [])].filter(
     (message) => message.role !== "system",
   );

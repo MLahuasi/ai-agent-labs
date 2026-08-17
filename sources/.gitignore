@@ -25,5 +25,3 @@ Thumbs.db
 *.swp
 *.swo
 
-# Issues generados por el agente (demo)
-issues/

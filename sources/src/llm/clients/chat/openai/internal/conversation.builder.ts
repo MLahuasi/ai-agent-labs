@@ -13,7 +13,10 @@ import { AgentRequest, Message } from "../../../../../types/agent/index.js";
 export function buildInput({
   prompt,
   messages,
-}: AgentRequest): OpenAI.Responses.ResponseInputItem[] {
+}: Pick<
+  AgentRequest,
+  "prompt" | "messages"
+>): OpenAI.Responses.ResponseInputItem[] {
   if (!messages?.length) {
     return [{ role: "user", content: prompt }];
   }

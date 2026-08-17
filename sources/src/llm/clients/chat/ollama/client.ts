@@ -1,17 +1,16 @@
-import ollama, { Message as OllamaMessage } from "ollama";
+import { Ollama, Message as OllamaMessage } from "ollama";
 import {
   AgentRequest,
   AgentResponse,
   ToolDefinition,
+  ToolExecutionState,
 } from "../../../../types/agent/index.js";
 import { LlmClient } from "../../../../types/app/client.js";
-import { config } from "../../../../config/index.js";
 import {
   buildConversation,
   toAgentMessages,
   toOllamaTools,
 } from "./internal/index.js";
-import { ollamaSystemPrompt } from "./internal/systemprompt.config.js";
 import { OllamaToolExecutor } from "./ollama-tool-executor.js";
 
 import type {
@@ -20,14 +19,74 @@ import type {
   StreamIterationResult,
 } from "./ollama.types.js";
 
+interface OllamaClientOptions {
+  host: string;
+  model: string;
+  systemPrompt?: string;
+  think: boolean;
+  keepAlive: string;
+  temperature: number;
+  numCtx: number;
+}
+
 /**
  * Cliente encargado de gestionar la comunicación con Ollama.
  */
 export class OllamaClient implements LlmClient {
+  // Cliente utilizado para realizar solicitudes a Ollama.
+  private readonly client: Ollama;
+
   // Ejecutor de las herramientas solicitadas por el modelo.
   private readonly toolExecutor: OllamaToolExecutor;
 
-  constructor() {
+  // Modelo utilizado para generar las respuestas.
+  private readonly model: string;
+
+  // Instrucciones específicas aplicadas al cliente Ollama.
+  private readonly systemPrompt?: string;
+
+  // Indica si Ollama debe habilitar el modo de razonamiento.
+  private readonly think: boolean;
+
+  // Tiempo que el modelo permanece cargado en memoria.
+  private readonly keepAlive: string;
+
+  // Temperatura utilizada durante la generación.
+  private readonly temperature: number;
+
+  // Tamaño máximo del contexto utilizado por el modelo.
+  private readonly numCtx: number;
+
+  /**
+   * Crea una nueva instancia del cliente de Ollama.
+   *
+   * @param options Configuración utilizada para inicializar el cliente.
+   * @param options.host Dirección del servidor de Ollama.
+   * @param options.model Modelo de Ollama utilizado para generar respuestas.
+   * @param options.systemPrompt Instrucciones específicas aplicadas al modelo Ollama.
+   * @param options.think Indica si se habilita el modo de razonamiento.
+   * @param options.keepAlive Tiempo que el modelo permanece cargado en memoria.
+   * @param options.temperature Temperatura utilizada durante la generación.
+   * @param options.numCtx Tamaño máximo del contexto utilizado por el modelo.
+   */
+  constructor({
+    host,
+    model,
+    systemPrompt,
+    think,
+    keepAlive,
+    temperature,
+    numCtx,
+  }: OllamaClientOptions) {
+    this.client = new Ollama({
+      host,
+    });
+    this.model = model;
+    this.systemPrompt = systemPrompt;
+    this.think = think;
+    this.keepAlive = keepAlive;
+    this.temperature = temperature;
+    this.numCtx = numCtx;
     this.toolExecutor = new OllamaToolExecutor();
   }
 
@@ -44,17 +103,18 @@ export class OllamaClient implements LlmClient {
     messages: OllamaMessage[],
     tools?: ToolDefinition[],
   ) {
-    return ollama.chat({
-      model: config.ollamaModel,
+    return this.client.chat({
+      model: this.model,
       messages,
       tools: toOllamaTools(tools),
-      think: false,
+      think: this.think,
       stream: false,
-      keep_alive: "10m",
+      keep_alive: this.keepAlive,
+
       options: {
-        temperature: 0,
+        temperature: this.temperature,
         num_predict: maxTokens,
-        num_ctx: 4096,
+        num_ctx: this.numCtx,
       },
     });
   }
@@ -72,17 +132,18 @@ export class OllamaClient implements LlmClient {
     messages: OllamaMessage[],
     tools?: ToolDefinition[],
   ) {
-    return ollama.chat({
-      model: config.ollamaModel,
+    return this.client.chat({
+      model: this.model,
       messages,
       tools: toOllamaTools(tools),
-      think: false,
+      think: this.think,
       stream: true,
-      keep_alive: "10m",
+      keep_alive: this.keepAlive,
+
       options: {
-        temperature: 0,
+        temperature: this.temperature,
         num_predict: maxTokens,
-        num_ctx: 4096,
+        num_ctx: this.numCtx,
       },
     });
   }
@@ -90,24 +151,35 @@ export class OllamaClient implements LlmClient {
   /**
    * Construye el system prompt utilizado por Ollama.
    *
-   * @param systemPrompt System prompt opcional.
-   * @return System prompt utilizado en la conversación.
+   * Combina las instrucciones de la conversación con las instrucciones
+   * específicas configuradas para el cliente Ollama.
+   *
+   * @param systemPrompt System prompt opcional de la conversación.
+   * @return System prompt utilizado por Ollama.
    */
   private buildSystemPrompt(systemPrompt?: string): string | undefined {
-    return systemPrompt ? systemPrompt + "\n" + ollamaSystemPrompt : undefined;
+    if (systemPrompt && this.systemPrompt) {
+      return `${systemPrompt}\n${this.systemPrompt}`;
+    }
+
+    return systemPrompt ?? this.systemPrompt;
   }
 
   /**
    * Crea el contexto inicial para una conversación con herramientas.
    *
-   * @param request Datos necesarios para construir la conversación.
+   * @param prompt Mensaje inicial enviado por el usuario.
+   * @param systemPrompt Prompt de sistema utilizado durante la conversación.
+   * @param messages Historial opcional de conversación.
+   * @param toolState Estado de ejecución de herramientas del turno actual.
    * @return Contexto inicial de ejecución.
    */
-  private createExecutionContext({
-    prompt,
-    systemPrompt,
-    messages,
-  }: AgentRequest): ExecutionContext {
+  private createExecutionContext(
+    prompt: string,
+    systemPrompt: string,
+    messages: AgentRequest["messages"],
+    toolState: ToolExecutionState,
+  ): ExecutionContext {
     return {
       conversation: buildConversation({
         prompt,
@@ -116,10 +188,7 @@ export class OllamaClient implements LlmClient {
       }),
       totalInputTokens: 0,
       totalOutputTokens: 0,
-      toolState: {
-        toolsUsed: new Set<string>(),
-        executedToolCalls: new Set<string>(),
-      },
+      toolState,
     };
   }
 
@@ -159,6 +228,7 @@ export class OllamaClient implements LlmClient {
       totalInputTokens: context.totalInputTokens,
       totalOutputTokens: context.totalOutputTokens,
       toolsUsed: [...context.toolState.toolsUsed],
+      toolCallsLastTurn: context.toolState.toolCallsLastTurn,
 
       ...(includeConversation && {
         conversation: toAgentMessages(context.conversation),
@@ -173,7 +243,12 @@ export class OllamaClient implements LlmClient {
    * @param request.prompt Mensaje inicial enviado por el usuario.
    * @param request.systemPrompt Instrucciones opcionales para el modelo.
    * @param request.messages Historial opcional de la conversación.
-   * @param request.tools Herramientas opcionales disponibles.
+   * @param request.tools Herramientas opcionales disponibles para el modelo.
+   * @param request.executeTool Función opcional utilizada para ejecutar herramientas.
+   * @param request.toolState Estado opcional de ejecución de herramientas del turno actual.
+   * @param request.maxIterations Máximo de iteraciones permitidas durante una ejecución con herramientas.
+   * @param request.maxTokens Máximo de tokens permitidos en una respuesta sin herramientas.
+   * @param request.maxTokensTools Máximo de tokens permitidos durante una ejecución con herramientas.
    * @return Respuesta generada por el modelo.
    */
   async ask({
@@ -181,6 +256,11 @@ export class OllamaClient implements LlmClient {
     systemPrompt,
     messages,
     tools,
+    executeTool,
+    toolState,
+    maxIterations,
+    maxTokens,
+    maxTokensTools,
   }: AgentRequest): Promise<AgentResponse> {
     // Ejecuta una única consulta cuando no existen herramientas.
     if (!tools?.length) {
@@ -190,43 +270,54 @@ export class OllamaClient implements LlmClient {
         messages,
       });
 
-      const response = await this.create(config.max_tokens, conversation);
+      const response = await this.create(maxTokens, conversation);
 
-      const text = response.message.content?.trim();
-
-      if (!text) {
-        return {
-          text: "Ollama no retornó contenido de texto en la respuesta.",
-          totalInputTokens: response.prompt_eval_count ?? 0,
-          totalOutputTokens: response.eval_count ?? 0,
-          toolsUsed: [],
-        };
-      }
+      const text =
+        response.message.content?.trim() ||
+        "Ollama no retornó contenido de texto en la respuesta.";
 
       return {
         text,
         totalInputTokens: response.prompt_eval_count ?? 0,
         totalOutputTokens: response.eval_count ?? 0,
         toolsUsed: [],
+        toolCallsLastTurn: 0,
       };
     }
 
+    if (!executeTool) {
+      throw new Error(
+        "Se proporcionaron tools pero no un ejecutor de herramientas.",
+      );
+    }
+
+    if (!toolState) {
+      throw new Error(
+        "Se proporcionaron tools pero no un estado de ejecución.",
+      );
+    }
+
     // Inicializa el contexto compartido entre las iteraciones.
-    const context = this.createExecutionContext({
+    const context = this.createExecutionContext(
       prompt,
-      systemPrompt,
+      systemPrompt ?? "",
       messages,
-      tools,
-    });
+      toolState,
+    );
 
     // Ejecuta iteraciones hasta obtener una respuesta final o alcanzar el límite.
-    for (let iteration = 0; iteration < config.max_iterations; iteration++) {
+    for (let iteration = 0; iteration < maxIterations; iteration++) {
       console.log(`\nPensando... (iteración ${iteration + 1})`);
 
+      const availableTools =
+        context.toolState.toolCallsLastTurn < context.toolState.maxToolCalls
+          ? tools
+          : undefined;
+
       const response = await this.create(
-        config.max_tokens_tools,
+        maxTokensTools,
         context.conversation,
-        tools,
+        availableTools,
       );
 
       this.addUsage(context, response.prompt_eval_count, response.eval_count);
@@ -266,17 +357,18 @@ export class OllamaClient implements LlmClient {
         tools,
         context.toolState,
         iteration,
+        executeTool,
       );
 
       // Agrega los resultados para la siguiente iteración.
       this.toolExecutor.appendResults(context.conversation, results);
     }
 
-    console.warn(`Límite de ${config.max_iterations} iteraciones alcanzado`);
+    console.warn(`Límite de ${maxIterations} iteraciones alcanzado`);
 
     return this.buildResponse(
       `Lo siento, no pude completar la tarea en ` +
-        `${config.max_iterations} iteraciones. ` +
+        `${maxIterations} iteraciones. ` +
         "Intenta una pregunta más específica.",
       context,
     );
@@ -289,7 +381,12 @@ export class OllamaClient implements LlmClient {
    * @param request.prompt Mensaje inicial enviado por el usuario.
    * @param request.systemPrompt Instrucciones opcionales para el modelo.
    * @param request.messages Historial opcional de la conversación.
-   * @param request.tools Herramientas opcionales disponibles.
+   * @param request.tools Herramientas opcionales disponibles para el modelo.
+   * @param request.executeTool Función opcional utilizada para ejecutar herramientas.
+   * @param request.toolState Estado opcional de ejecución de herramientas del turno actual.
+   * @param request.maxTokens Máximo de tokens permitidos en una respuesta sin herramientas.
+   * @param request.maxIterations Máximo de iteraciones permitidas durante una ejecución con herramientas.
+   * @param request.maxTokensTools Máximo de tokens permitidos durante una ejecución con herramientas.
    * @return Respuesta generada por el modelo.
    */
   async stream({
@@ -297,6 +394,11 @@ export class OllamaClient implements LlmClient {
     systemPrompt,
     messages,
     tools,
+    executeTool,
+    toolState,
+    maxTokens,
+    maxIterations,
+    maxTokensTools,
   }: AgentRequest): Promise<AgentResponse> {
     // Ejecuta un único stream cuando no existen herramientas.
     if (!tools?.length) {
@@ -306,7 +408,7 @@ export class OllamaClient implements LlmClient {
         messages,
       });
 
-      const stream = await this.createStream(config.max_tokens, conversation);
+      const stream = await this.createStream(maxTokens, conversation);
 
       let content = "";
       let totalInputTokens = 0;
@@ -315,8 +417,6 @@ export class OllamaClient implements LlmClient {
       // Procesa los fragmentos generados durante el stream.
       for await (const chunk of stream) {
         if (chunk.message.content) {
-          process.stdout.write(chunk.message.content);
-
           content += chunk.message.content;
         }
 
@@ -327,31 +427,52 @@ export class OllamaClient implements LlmClient {
         }
       }
 
-      process.stdout.write("\n");
+      const text =
+        content.trim() ||
+        "Ollama no retornó contenido de texto en la respuesta.";
 
       return {
-        text: content.trim(),
+        text,
         totalInputTokens,
         totalOutputTokens,
         toolsUsed: [],
+        toolCallsLastTurn: 0,
       };
     }
 
+    if (!executeTool) {
+      throw new Error(
+        "Se proporcionaron tools pero no un ejecutor de herramientas.",
+      );
+    }
+
+    if (!toolState) {
+      throw new Error(
+        "Se proporcionaron tools pero no un estado de ejecución.",
+      );
+    }
+
     // Inicializa el contexto compartido entre las iteraciones.
-    const context = this.createExecutionContext({
+    const context = this.createExecutionContext(
       prompt,
-      systemPrompt,
+      systemPrompt ?? "",
       messages,
-      tools,
-    });
+      toolState,
+    );
 
     // Ejecuta una nueva generación en streaming por cada iteración.
-    for (let iteration = 0; iteration < config.max_iterations; iteration++) {
+    for (let iteration = 0; iteration < maxIterations; iteration++) {
       console.log(`\nPensando... (iteración ${iteration + 1})`);
+
+      const availableTools =
+        context.toolState.toolCallsLastTurn < context.toolState.maxToolCalls
+          ? tools
+          : undefined;
 
       const result = await this.executeStreamIteration(
         context.conversation,
-        tools,
+        maxTokensTools,
+        availableTools,
       );
 
       this.addUsage(context, result.inputTokens, result.outputTokens);
@@ -359,8 +480,6 @@ export class OllamaClient implements LlmClient {
       // Retorna el contenido cuando no existen llamadas a herramientas.
       if (result.toolCalls.length === 0) {
         const text = result.text.trim();
-
-        process.stdout.write("\n");
 
         if (!text) {
           console.warn("Ollama no retornó texto ni llamadas a herramientas.");
@@ -388,17 +507,18 @@ export class OllamaClient implements LlmClient {
         tools,
         context.toolState,
         iteration,
+        executeTool,
       );
 
       // Agrega los resultados para la siguiente iteración.
       this.toolExecutor.appendResults(context.conversation, toolResults);
     }
 
-    console.warn(`Límite de ${config.max_iterations} iteraciones alcanzado`);
+    console.warn(`Límite de ${maxIterations} iteraciones alcanzado`);
 
     return this.buildResponse(
       `Lo siento, no pude completar la tarea en ` +
-        `${config.max_iterations} iteraciones. ` +
+        `${maxIterations} iteraciones. ` +
         "Intenta una pregunta más específica.",
       context,
     );
@@ -407,19 +527,17 @@ export class OllamaClient implements LlmClient {
   /**
    * Ejecuta una iteración completa mediante streaming.
    *
-   * @param conversation Historial actual.
-   * @param tools Herramientas disponibles.
+   * @param conversation Historial actual de la conversación.
+   * @param maxTokensTools Máximo de tokens permitidos durante la iteración con herramientas.
+   * @param tools Herramientas opcionales disponibles para el modelo.
    * @return Resultado completo de la iteración.
    */
   private async executeStreamIteration(
     conversation: OllamaMessage[],
-    tools: ToolDefinition[],
+    maxTokensTools: number,
+    tools: ToolDefinition[] | undefined,
   ): Promise<StreamIterationResult> {
-    const stream = await this.createStream(
-      config.max_tokens_tools,
-      conversation,
-      tools,
-    );
+    const stream = await this.createStream(maxTokensTools, conversation, tools);
 
     let text = "";
     let totalInputTokens = 0;
@@ -438,10 +556,7 @@ export class OllamaClient implements LlmClient {
       const content = chunk.message.content ?? "";
 
       if (content) {
-        process.stdout.write(content);
-
         text += content;
-
         assistantMessage.content += content;
       }
 

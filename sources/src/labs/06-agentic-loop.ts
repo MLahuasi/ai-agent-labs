@@ -1,40 +1,47 @@
 import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
+
 import { Conversation } from "../chat/index.js";
+import { config } from "../config/index.js";
 import { DOCUMENTATION_ASSISTANT_PROMPT } from "../llm/prompts/system.prompt.js";
 import { TOOL_DEFINITIONS } from "../tools/definitions/index.js";
+import { executeFileTool } from "../tools/executor/files-tools.executor.js";
 import { LlmClient } from "../types/app/client.js";
-import { Message } from "../types/agent/index.js";
 
+/**
+ * Inicia un chat interactivo con acceso a herramientas de archivos.
+ *
+ * @param llm Cliente LLM utilizado durante la conversación.
+ * @return No retorna ningún valor.
+ */
 export async function startAgenticLoop(llm: LlmClient): Promise<void> {
   const rl = readline.createInterface({
     input,
     output,
   });
 
-  const conversation = new Conversation(DOCUMENTATION_ASSISTANT_PROMPT);
-  conversation.setAsk(({ prompt, systemPrompt, messages, tools }) =>
-    llm.ask({
-      prompt,
-      systemPrompt,
-      messages,
-      tools,
-    }),
-  );
+  const conversation = new Conversation(DOCUMENTATION_ASSISTANT_PROMPT, {
+    maxTokens: config.max_tokens,
+    maxTokensTools: config.max_tokens_tools,
+    maxIterations: config.max_iterations,
+    maxToolCalls: config.max_tool_calls,
+  });
 
-  console.log("╔════════════════════════╗");
-  console.log("║    Agentic Loop IA     ║");
-  console.log("╚════════════════════════╝");
+  conversation.setAsk((request) => llm.ask(request));
+
+  console.log("╔════════════════════════════════╗");
+  console.log("║    Agentic Loop with Tools     ║");
+  console.log("╚════════════════════════════════╝");
   console.log("");
   console.log("💬 Escribe tu pregunta y presiona Enter.");
   console.log(
-    `   Tengo acceso a ${TOOL_DEFINITIONS.length} tools: ${TOOL_DEFINITIONS.map((t) => t.name).join(", ")}`,
+    `   Tengo acceso a ${TOOL_DEFINITIONS.length} tools: ` +
+      `${TOOL_DEFINITIONS.map((tool) => tool.name).join(", ")}`,
   );
   console.log("   Comandos: /clear, /stats, /tools, /exit");
   console.log("");
 
   try {
-    let messages: Message[] | undefined = undefined;
     while (true) {
       const inputText = await rl.question("Tú: ");
       const userInput = inputText.trim();
@@ -44,13 +51,15 @@ export async function startAgenticLoop(llm: LlmClient): Promise<void> {
       }
 
       if (userInput === "/tools") {
-        conversation.clear();
         console.log(`\nTools disponibles (${TOOL_DEFINITIONS.length}):`);
+
         for (const tool of TOOL_DEFINITIONS) {
           const params = Object.keys(tool.input_schema.properties).join(", ");
+
           console.log(`   * ${tool.name}(${params})`);
           console.log(`     ${tool.description.split(".")[0]}.`);
         }
+
         console.log("");
         continue;
       }
@@ -63,6 +72,11 @@ export async function startAgenticLoop(llm: LlmClient): Promise<void> {
 
       if (userInput === "/stats") {
         printStats(conversation);
+        continue;
+      }
+
+      if (userInput === "/history") {
+        printHistory(conversation);
         continue;
       }
 
@@ -81,29 +95,13 @@ export async function startAgenticLoop(llm: LlmClient): Promise<void> {
       try {
         process.stdout.write("\nAsistente: ");
 
-        const { messages: chat, text } = await conversation.sendChat(
+        const { text } = await conversation.sendChat(
           userInput,
           TOOL_DEFINITIONS,
-          messages,
+          executeFileTool,
         );
 
-        messages = chat;
-
         process.stdout.write(text);
-        process.stdout.write("\n\n");
-
-        // let res = await FileSystemUtils.searchFile({
-        //   searchText: "config.ts",
-        //   file_extension: ".ts",
-        //   // path: "src/",
-        // });
-
-        // console.log(res);
-
-        /**
-         * El cliente de streaming ya imprime
-         * los fragmentos recibidos.
-         */
         process.stdout.write("\n\n");
       } catch (error) {
         const message =
@@ -117,6 +115,12 @@ export async function startAgenticLoop(llm: LlmClient): Promise<void> {
   }
 }
 
+/**
+ * Imprime las estadísticas actuales de una conversación.
+ *
+ * @param conversation Conversación utilizada para obtener las estadísticas.
+ * @return No retorna ningún valor.
+ */
 function printStats(conversation: Conversation): void {
   const stats = conversation.getStats();
 
@@ -126,6 +130,41 @@ function printStats(conversation: Conversation): void {
   console.log(`   • Tokens de salida acumulados: ${stats.outputTokens}`);
   console.log(
     `   • Tokens estimados en contexto actual: ` +
-      `${conversation.estimateCurrentTokens()}\n`,
+      `${conversation.estimateCurrentTokens()}`,
   );
+  console.log(
+    `   • Llamadas a tools en el último turno: ` +
+      `${stats.toolCallsLastTurn}\n`,
+  );
+}
+
+/**
+ * Imprime el historial completo de la conversación.
+ *
+ * @param conversation Conversación utilizada para obtener el historial.
+ * @return No retorna ningún valor.
+ */
+function printHistory(conversation: Conversation): void {
+  const history = conversation.getHistory();
+
+  console.log("\n📜 Historial de la conversación:");
+
+  if (history.length === 0) {
+    console.log("   No hay mensajes registrados.\n");
+    return;
+  }
+
+  for (const message of history) {
+    const role =
+      message.role === "user"
+        ? "Tú"
+        : message.role === "assistant"
+          ? "Asistente"
+          : message.role;
+
+    console.log(`\n${role}:`);
+    console.log(message.content);
+  }
+
+  console.log("");
 }

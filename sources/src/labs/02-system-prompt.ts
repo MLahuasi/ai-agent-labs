@@ -1,3 +1,4 @@
+import { config } from "../config/index.js";
 import { CODE_REVIEWER_PROMPT } from "../llm/prompts/index.js";
 import { LlmClient } from "../types/app/index.js";
 
@@ -19,30 +20,51 @@ function calcularDescuento(precio, tipo) {
 }
 `;
 
+/**
+ * Compara una consulta realizada sin system prompt y con system prompt.
+ *
+ * @param llm Cliente LLM utilizado para generar las respuestas.
+ * @return No retorna ningún valor.
+ */
 export async function systemPrompt(llm: LlmClient): Promise<void> {
   console.log("╔═══════════════════════╗");
   console.log("║    System Prompts     ║");
   console.log("╚═══════════════════════╝");
-  const question = `Revisa este código:\n\`\`\`javascript\n ${CODIGO_CON_PROBLEMAS}\`\`\``;
+
+  const question =
+    `Revisa este código:\n` + `\`\`\`javascript\n${CODIGO_CON_PROBLEMAS}\`\`\``;
+
   console.log(` Pregunta: ${question}`);
   console.log("");
+
   console.log("✅ Demo 1: Enviando código SIN system prompt");
   console.log("");
+
   const answer = await llm.ask({
     prompt: question,
+    maxTokens: config.max_tokens,
+    maxTokensTools: config.max_tokens_tools,
+    maxIterations: config.max_iterations,
   });
+
   console.log("-".repeat(50));
   console.log(` Respuesta: ${answer.text}`);
   console.log(` Tokens Entrada: ${answer.totalInputTokens}`);
   console.log(` Tokens Salida: ${answer.totalOutputTokens}`);
   console.log("-".repeat(50));
   console.log("");
+
   console.log("✅ Demo 2: Enviando código CON system prompt");
   console.log("");
+
   const reviewerPromptAnswer = await llm.ask({
     prompt: question,
     systemPrompt: CODE_REVIEWER_PROMPT,
+    maxTokens: config.max_tokens,
+    maxTokensTools: config.max_tokens_tools,
+    maxIterations: config.max_iterations,
   });
+
   console.log("-".repeat(50));
   console.log(` Respuesta: ${reviewerPromptAnswer.text}`);
   console.log(` Tokens Entrada: ${reviewerPromptAnswer.totalInputTokens}`);

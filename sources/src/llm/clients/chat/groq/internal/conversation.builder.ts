@@ -20,7 +20,10 @@ export function buildConversation({
   prompt,
   systemPrompt,
   messages,
-}: AgentRequest): ChatCompletionMessageParam[] {
+}: Pick<
+  AgentRequest,
+  "prompt" | "messages" | "systemPrompt"
+>): ChatCompletionMessageParam[] {
   const history = [...(messages ?? [])];
 
   removeDuplicatedCurrentPrompt(history, prompt);

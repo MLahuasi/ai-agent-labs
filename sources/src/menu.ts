@@ -4,6 +4,7 @@ import { stdin as input, stdout as output } from "node:process";
 import {
   codeReview,
   simpleCall,
+  starAgent,
   startAgenticLoop,
   startCLI,
   startRagAgent,
@@ -22,8 +23,9 @@ export async function showMenu(llm: LlmClient): Promise<void> {
   console.log("3. Streaming Response");
   console.log("4. Chat");
   console.log("5. Read file and call LLM");
-  console.log("6. Agentic Loop");
-  console.log("7. Agente con RAG");
+  console.log("6. Agentic Loop with tools");
+  console.log("7. Agentic Loop with RAG");
+  console.log("8. Agentic Loop");
   console.log("0. Salir");
 
   const option = await rl.question("\nOpción: ");
@@ -65,6 +67,11 @@ export async function showMenu(llm: LlmClient): Promise<void> {
     case "7":
       rl.close();
       await startRagAgent(llm);
+      return;
+
+    case "8":
+      rl.close();
+      await starAgent(llm);
       return;
 
     case "0":

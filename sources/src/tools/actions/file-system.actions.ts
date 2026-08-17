@@ -1,99 +1,26 @@
-import * as fs from "fs/promises";
-
 import { ActionsSettings } from "./index.js";
 import { FileSystemTools } from "../../utils/files/file-systems.tools.js";
 import { serialize } from "../../utils/response/index.js";
 
 /**
- * Proporciona utilidades estáticas para validar rutas y recorrer archivos.
- * No requiere crear instancias de la clase.
+ * Proporciona acciones para consultar archivos y directorios del proyecto.
  */
 export class FileSystemToolActions {
   /**
-   * Recorre un directorio y sus subdirectorios para obtener archivos.
-   * Opcionalmente filtra los resultados por extensión.
-   */
-  private static async collectFiles(
-    dirPath: string,
-    extension?: string,
-  ): Promise<string[]> {
-    // Inicializa la lista donde se almacenarán los archivos encontrados.
-    const results: string[] = [];
-
-    // Declara la lista de elementos encontrados dentro del directorio.
-    let entries;
-
-    try {
-      // Lee el directorio incluyendo información de archivos y carpetas.
-      entries = await fs.readdir(dirPath, {
-        withFileTypes: true,
-      });
-    } catch {
-      // Retorna una lista vacía si el directorio no puede leerse.
-      return results;
-    }
-
-    // Recorre cada archivo o carpeta encontrado.
-    for (const entry of entries) {
-      // Ignora node_modules y elementos ocultos como .git o .env.
-      if (ActionsSettings.shouldIgnoreEntry(entry.name)) {
-        // Continúa con el siguiente elemento.
-        continue;
-      }
-
-      // Construye la ruta completa del elemento actual.
-      const fullPath = FileSystemTools.buildFullPath(dirPath, entry.name);
-
-      // Comprueba si el elemento es un directorio.
-      if (entry.isDirectory()) {
-        // Busca archivos recursivamente dentro del subdirectorio.
-        const subFiles = await FileSystemToolActions.collectFiles(
-          fullPath,
-          extension,
-        );
-
-        // Agrega los archivos encontrados al resultado.
-        results.push(...subFiles);
-        continue;
-      }
-
-      if (entry.isFile() && (!extension || entry.name.endsWith(extension))) {
-        // Agrega el archivo si no hay filtro o coincide con la extensión.
-        results.push(fullPath);
-      }
-    }
-
-    // Retorna todas las rutas de archivos encontradas.
-    return results;
-  }
-
-  /**
-   * Lista de forma recursiva los archivos existentes dentro de un directorio.
-   *
-   * La función:
-   *
-   * 1. Valida que la ruta indicada permanezca dentro del proyecto.
-   * 2. Comprueba que la ruta exista y corresponda a un directorio.
-   * 3. Recorre el directorio y sus subdirectorios.
-   * 4. Aplica un filtro por extensión cuando se proporciona.
-   * 5. Convierte las rutas absolutas en rutas relativas al proyecto.
-   * 6. Ordena los resultados alfabéticamente.
-   * 7. Retorna una respuesta serializada y estructurada.
+   * Lista los archivos existentes dentro de un directorio.
    *
    * @param params.path Ruta del directorio que se desea listar.
-   * @param params.extension Extensión opcional para filtrar archivos.
-   * @returns Resultado serializado con los archivos encontrados o el error producido.
+   * @param params.extension Extensión opcional utilizada para filtrar archivos.
+   * @return Respuesta serializada con los archivos encontrados.
    */
   static async getListFiles(params: {
     path: string;
     extension?: string;
   }): Promise<string> {
-    // Convierte la ruta relativa recibida en una ruta absoluta
-    // y verifica que permanezca dentro de la raíz del proyecto.
+    // Resuelve y valida la ruta dentro del proyecto.
     const securePath = FileSystemTools.resolveSecurePath(params.path);
 
-    //Si resolveSecurePath retorna null, significa que la ruta
-    //intenta acceder fuera del directorio permitido.
+    // Rechaza rutas externas al proyecto.
     if (!securePath) {
       return serialize({
         success: false,
@@ -102,46 +29,40 @@ export class FileSystemToolActions {
       });
     }
 
-    //Almacena la información del sistema de archivos asociada con la ruta validada.
-
-    let stat: Awaited<ReturnType<typeof fs.stat>>;
+    // Almacena la información de la ruta.
+    let stat: Awaited<ReturnType<typeof FileSystemTools.getStat>>;
 
     try {
-      //fs.stat permite determinar, entre otras cosas, si la ruta corresponde a un archivo o a un directorio.
-      stat = await fs.stat(securePath);
+      // Obtiene información de la ruta.
+      stat = await FileSystemTools.getStat(securePath);
     } catch {
-      // Retorna un error estructurado cuando la ruta no existe o no puede ser consultada.
+      // Retorna un error si la ruta no puede consultarse.
       return serialize({
         success: false,
         error: `El directorio "${params.path}" no existe o no puede consultarse.`,
       });
     }
 
-    //Verifica que la ruta corresponda realmente a un directorio.
-    if (!stat.isDirectory()) {
+    // Comprueba que la ruta sea un directorio.
+    if (stat !== undefined && !stat.isDirectory()) {
       return serialize({
         success: false,
         error: `"${params.path}" no es un directorio.`,
       });
     }
 
-    //Recorre recursivamente el directorio validado y todos sus subdirectorios.
-    //Si params.extension tiene un valor, collectFiles solamente retorna archivos cuya extensión coincida con el filtro.
-    const files = await FileSystemToolActions.collectFiles(
-      // Ruta absoluta validada dentro del proyecto.
+    // Obtiene los archivos del directorio.
+    const files = await FileSystemTools.collectFiles(
       securePath,
-
-      // Filtro opcional por extensión.
       params.extension,
     );
 
-    //Transforma las rutas absolutas obtenidas por collectFiles en rutas relativas a la raíz del proyecto.
-    //Después ordena los archivos alfabéticamente para producir una respuesta estable y predecible.
+    // Convierte las rutas y ordena los resultados.
     const relativePaths = files
       .map((file) => FileSystemTools.toRelativePath(file))
       .sort((left, right) => left.localeCompare(right));
 
-    //Retorna un resultado estructurado y serializado.
+    // Retorna los archivos encontrados.
     return serialize({
       success: true,
       operation: "list_files",
@@ -153,37 +74,23 @@ export class FileSystemToolActions {
   }
 
   /**
-   * Busca archivos por nombre dentro de un directorio del proyecto
-   * y todos sus subdirectorios.
+   * Busca un archivo por nombre dentro de un directorio.
    *
-   * La función:
-   *
-   * 1. Determina la ruta desde donde iniciar la búsqueda.
-   * 2. Valida que la ruta permanezca dentro del proyecto.
-   * 3. Comprueba que la ruta exista y sea un directorio.
-   * 4. Normaliza el nombre del archivo buscado.
-   * 5. Obtiene recursivamente todos los archivos del directorio.
-   * 6. Filtra los archivos por coincidencia exacta o parcial.
-   * 7. Limita y ordena los resultados.
-   * 8. Retorna una respuesta estructurada y serializada.
-   *
-   * @param params.file_name Nombre completo o parcial del archivo buscado.
-   * @param params.path Directorio opcional desde donde iniciar la búsqueda.
-   * @returns Resultado serializado con las rutas encontradas o el error producido.
+   * @param params.file_name Nombre del archivo que se desea buscar.
+   * @param params.path Directorio opcional donde se realizará la búsqueda.
+   * @return Respuesta serializada con los archivos encontrados.
    */
   static async findFile(params: {
     file_name: string;
     path?: string;
   }): Promise<string> {
-    //Define el directorio inicial de búsqueda.
-    //Si el usuario o el agente proporcionó una ruta, se utiliza esa ruta.
-    //En caso contrario, se utiliza ".", que representa la raíz del proyecto.
+    // Define la ruta inicial de búsqueda.
     const searchPath = params.path ?? ".";
 
-    // Convierte la ruta recibida en una ruta absoluta y verifica que permanezca dentro de la raíz del proyecto.
+    // Resuelve y valida la ruta dentro del proyecto.
     const securePath = FileSystemTools.resolveSecurePath(searchPath);
 
-    //Si resolveSecurePath retorna null, la ruta intenta salir del directorio permitido.
+    // Rechaza rutas externas al proyecto.
     if (!securePath) {
       return serialize({
         success: false,
@@ -192,33 +99,32 @@ export class FileSystemToolActions {
       });
     }
 
-    //Almacena los metadatos de la ruta validada.
-    let stat: Awaited<ReturnType<typeof fs.stat>>;
+    // Almacena la información de la ruta.
+    let stat: Awaited<ReturnType<typeof FileSystemTools.getStat>>;
 
     try {
-      // fs.stat permite comprobar si la ruta existe y si corresponde a un archivo, directorio u otro tipo de elemento.
-      stat = await fs.stat(securePath);
+      // Obtiene información de la ruta.
+      stat = await FileSystemTools.getStat(securePath);
     } catch {
-      // Retorna un error estructurado cuando la ruta no existe o no puede ser consultada.
+      // Retorna un error si la ruta no existe.
       return serialize({
         success: false,
         error: `La ruta de búsqueda "${searchPath}" no existe.`,
       });
     }
 
-    // Verifica que la ruta inicial corresponda a un directorio. La búsqueda recursiva solo puede realizarse sobre directorios.
-    if (!stat.isDirectory()) {
+    // Comprueba que la ruta sea un directorio.
+    if (stat !== undefined && !stat.isDirectory()) {
       return serialize({
         success: false,
         error: `"${searchPath}" no es un directorio.`,
       });
     }
 
-    // Normaliza el nombre recibido:
+    // Normaliza el nombre del archivo.
     const normalizedFileName = params.file_name.trim().toLowerCase();
 
-    // Comprueba que el nombre no esté vacío después de eliminar espacios.
-    // Esto evita recorrer todo el proyecto con un criterio inválido.
+    // Comprueba que el nombre tenga contenido.
     if (!normalizedFileName) {
       return serialize({
         success: false,
@@ -226,30 +132,24 @@ export class FileSystemToolActions {
       });
     }
 
-    // Obtiene recursivamente todos los archivos existentes dentro del directorio y sus subdirectorios.
-    const allFiles = await FileSystemToolActions.collectFiles(securePath);
+    // Obtiene los archivos del directorio.
+    const allFiles = await FileSystemTools.collectFiles(securePath);
 
-    // Filtra los archivos encontrados comparando únicamente el nombre de cada archivo, sin incluir su ruta.
+    // Filtra los archivos por nombre.
     const matchingFiles = allFiles.filter((file) => {
-      // Extrae el nombre del archivo incluido en la ruta.
+      // Obtiene el nombre normalizado del archivo.
       const currentFileName = FileSystemTools.getLowerCaseFileName(file);
 
-      // Cuando exact_match es false, se realiza una coincidencia parcial.
+      // Permite una coincidencia parcial cuando se habilite esta opción.
       // if (params.exact_match === false) {
       //   return currentFileName.includes(normalizedFileName);
       // }
 
-      // En cualquier otro caso se realiza una coincidencia exacta.
+      // Realiza una coincidencia exacta.
       return currentFileName === normalizedFileName;
     });
 
-    // Prepara las coincidencias que serán retornadas.
-    //
-    // El procesamiento se realiza en tres pasos:
-    //
-    // 1. slice() limita la cantidad de resultados;
-    // 2. map() convierte rutas absolutas en rutas relativas;
-    // 3. sort() ordena alfabéticamente las rutas.
+    // Limita, transforma y ordena las coincidencias.
     const limitedMatches = matchingFiles
       .slice(0, ActionsSettings.MAX_FILE_RESULTS)
       .map((file) => FileSystemTools.toRelativePath(file))
@@ -259,7 +159,7 @@ export class FileSystemToolActions {
     //   limitedMatches,
     // });
 
-    // Retorna una respuesta estructurada y serializada.
+    // Retorna las coincidencias encontradas.
     return serialize({
       success: true,
       operation: "find_files",
@@ -273,18 +173,17 @@ export class FileSystemToolActions {
   }
 
   /**
-   * Valida y lee un archivo ubicado dentro del proyecto.
-   * Rechaza directorios, archivos inexistentes o demasiado grandes.
+   * Lee un archivo ubicado dentro del proyecto.
+   *
    * @param params.file_path Ruta del archivo que se desea leer.
-   * @returns Resultado serializado con las rutas encontradas o el error producido.
+   * @return Respuesta serializada con el contenido del archivo.
    */
   static async readFile(params: { file_path: string }): Promise<string> {
-    // Resuelve y valida que la ruta permanezca dentro del proyecto.
+    // Resuelve y valida la ruta dentro del proyecto.
     const securePath = FileSystemTools.resolveSecurePath(params.file_path);
 
-    // Comprueba si la ruta fue rechazada por seguridad.
+    // Rechaza rutas externas al proyecto.
     if (!securePath) {
-      // Retorna un error si la ruta intenta salir del proyecto.
       return serialize({
         success: false,
         error:
@@ -294,29 +193,34 @@ export class FileSystemToolActions {
     }
 
     try {
-      // Obtiene información del archivo o directorio indicado.
-      const stat = await fs.stat(securePath);
+      // Obtiene información de la ruta.
+      const stat = await FileSystemTools.getStat(securePath);
 
-      // Comprueba si la ruta corresponde a un directorio.
+      // Comprueba que la ruta exista.
+      if (!stat)
+        return serialize({
+          success: false,
+          error: `"${params.file_path}" no existe o no pudo ser leido `,
+        });
+
+      // Rechaza directorios.
       if (stat.isDirectory()) {
-        // Retorna un error porque solo se pueden leer archivos.
         return serialize({
           success: false,
           error: `"${params.file_path}" es un directorio, ` + "no un archivo.",
         });
       }
 
+      // Comprueba que la ruta corresponda a un archivo.
       if (!stat.isFile()) {
-        // error al leer el archivo.
         return serialize({
           success: false,
           error: `"${params.file_path}" no es un archivo válido.`,
         });
       }
 
-      // Comprueba si el tamaño del archivo supera el límite permitido.
+      // Comprueba el tamaño del archivo.
       if (stat.size > ActionsSettings.MAX_FILE_SIZE) {
-        // Retorna un aviso sin leer el contenido completo.
         return serialize({
           success: false,
           error:
@@ -325,19 +229,18 @@ export class FileSystemToolActions {
         });
       }
 
-      // Lee el contenido completo del archivo como texto UTF-8.
-      const content = await fs.readFile(securePath, "utf-8");
+      // Lee el contenido del archivo.
+      const content = await FileSystemTools.readFile(securePath, "utf-8");
 
-      // Comprueba si el contenido leído supera el límite permitido.
+      // Trunca el contenido si supera el límite permitido.
       if (content.length > ActionsSettings.MAX_FILE_SIZE) {
-        // Retorna solo una parte del contenido e indica que fue truncado.
         return (
           content.slice(0, ActionsSettings.MAX_FILE_SIZE) +
           "\n\n... [archivo truncado]"
         );
       }
 
-      // Retorna el contenido completo del archivo.
+      // Retorna el contenido del archivo.
       return serialize({
         success: true,
         operation: "read_file",
@@ -346,19 +249,18 @@ export class FileSystemToolActions {
         content,
       });
     } catch (error) {
-      // Convierte el error al tipo de error utilizado por Node.js.
+      // Convierte el error al tipo utilizado por Node.js.
       const err = error as NodeJS.ErrnoException;
 
-      // Comprueba si el archivo no fue encontrado.
+      // Retorna un error específico si el archivo no existe.
       if (err.code === "ENOENT") {
-        // Retorna un mensaje específico para archivos inexistentes.
         return serialize({
           success: false,
           error: `El archivo "${params.file_path}" no existe.`,
         });
       }
 
-      // Retorna un mensaje genérico para cualquier otro error de lectura.
+      // Retorna un error genérico de lectura.
       return serialize({
         success: false,
         error: `No fue posible leer el archivo ` + `"${params.file_path}".`,
@@ -367,39 +269,25 @@ export class FileSystemToolActions {
   }
 
   /**
-   * Busca un patrón de texto dentro del contenido de los archivos
-   * de un directorio y sus subdirectorios.
+   * Busca texto dentro del contenido de los archivos.
    *
-   * La función:
-   *
-   * 1. Determina la ruta desde donde iniciar la búsqueda.
-   * 2. Valida que la ruta permanezca dentro del proyecto.
-   * 3. Comprueba que la ruta exista y sea un directorio.
-   * 4. Valida que el patrón de búsqueda no esté vacío.
-   * 5. Obtiene recursivamente los archivos que se deben analizar.
-   * 6. Lee cada archivo como texto UTF-8.
-   * 7. Busca el patrón línea por línea.
-   * 8. Construye un bloque de contexto para cada coincidencia.
-   * 9. Limita la cantidad máxima de resultados.
-   * 10. Retorna una respuesta estructurada y serializada.
-   *
-   * @param params.searchText Texto literal que se desea buscar.
-   * @param params.path Directorio opcional desde donde iniciar la búsqueda.
-   * @param params.file_extension Extensión opcional para filtrar archivos.
-   * @returns Resultado serializado con las coincidencias o el error producido.
+   * @param params.searchText Texto que se desea buscar.
+   * @param params.path Directorio opcional donde se realizará la búsqueda.
+   * @param params.file_extension Extensión opcional utilizada para filtrar archivos.
+   * @return Respuesta serializada con las coincidencias encontradas.
    */
   static async searchFileContent(params: {
     searchText: string;
     path?: string;
     file_extension?: string;
   }): Promise<string> {
-    // Define el directorio inicial de búsqueda.
+    // Define la ruta inicial de búsqueda.
     const searchPath = params.path ?? ".";
 
-    // Convierte la ruta recibida en una ruta absoluta y verifica que permanezca dentro de la raíz del proyecto.
+    // Resuelve y valida la ruta dentro del proyecto.
     const securePath = FileSystemTools.resolveSecurePath(searchPath);
 
-    // Si resolveSecurePath retorna null, significa que la ruta intenta salir del directorio permitido.
+    // Rechaza rutas externas al proyecto.
     if (!securePath) {
       return serialize({
         success: false,
@@ -408,29 +296,29 @@ export class FileSystemToolActions {
       });
     }
 
-    // Almacena los metadatos asociados a la ruta validada.
-    let stat: Awaited<ReturnType<typeof fs.stat>>;
+    // Almacena la información de la ruta.
+    let stat: Awaited<ReturnType<typeof FileSystemTools.getStat>>;
 
     try {
-      // fs.stat permite comprobar si la ruta:
-      stat = await fs.stat(securePath);
+      // Obtiene información de la ruta.
+      stat = await FileSystemTools.getStat(securePath);
     } catch {
-      // Retorna un error estructurado cuando la ruta no existe o no puede ser consultada.
+      // Retorna un error si la ruta no existe.
       return serialize({
         success: false,
         error: `La ruta de búsqueda "${searchPath}" ` + "no existe.",
       });
     }
 
-    // Comprueba que la ruta inicial sea un directorio.
-    if (!stat.isDirectory()) {
+    // Comprueba que la ruta sea un directorio.
+    if (stat !== undefined && !stat.isDirectory()) {
       return serialize({
         success: false,
         error: `"${searchPath}" no es un directorio.`,
       });
     }
 
-    // Verifica que el patrón contenga algún valor.
+    // Comprueba que exista un texto de búsqueda.
     if (!params.searchText) {
       return serialize({
         success: false,
@@ -438,13 +326,13 @@ export class FileSystemToolActions {
       });
     }
 
-    // Obtiene recursivamente todos los archivos contenidos dentro del directorio validado.
-    const files = await FileSystemToolActions.collectFiles(
+    // Obtiene los archivos que serán analizados.
+    const files = await FileSystemTools.collectFiles(
       securePath,
       params.file_extension,
     );
 
-    // Almacena todas las coincidencias encontradas.
+    // Almacena las coincidencias encontradas.
     const matches: Array<{
       filePath: string;
       line: number;
@@ -455,90 +343,83 @@ export class FileSystemToolActions {
       }>;
     }> = [];
 
-    // Mantiene el número total de coincidencias encontradas.
+    // Mantiene el número de coincidencias.
     let totalMatches = 0;
 
-    // Recorre secuencialmente cada archivo encontrado.
+    // Recorre los archivos encontrados.
     for (const file of files) {
-      // Detiene el recorrido de archivos cuando ya se alcanzó la cantidad máxima de resultados permitidos.
+      // Detiene la búsqueda cuando alcanza el límite.
       if (totalMatches >= ActionsSettings.MAX_SEARCH_RESULTS) {
         break;
       }
 
-      // Variable que almacenará el contenido completo del archivo actual.
+      // Almacena el contenido del archivo.
       let content: string;
 
       try {
-        // Lee el archivo como texto utilizando codificación UTF-8.
-        content = await fs.readFile(file, "utf-8");
+        // Lee el contenido del archivo.
+        content = await FileSystemTools.readFile(file, "utf-8");
       } catch {
-        // Si un archivo no puede leerse, se omite y la búsqueda continúa con el siguiente archivo.
+        // Omite archivos que no puedan leerse.
         continue;
       }
 
-      // Divide el contenido en líneas. La expresión regular soporta:
-      // - "\n" utilizado normalmente en Linux y macOS;
-      // - "\r\n" utilizado normalmente en Windows./
+      // Divide el contenido en líneas.
       const lines = content.split(/\r?\n/);
 
-      // Recorre cada línea del archivo actual.
+      // Recorre las líneas del archivo.
       for (let i = 0; i < lines.length; i++) {
-        // Detiene el recorrido de líneas cuando se alcanza la cantidad máxima de resultados.
+        // Detiene la búsqueda cuando alcanza el límite.
         if (totalMatches >= ActionsSettings.MAX_SEARCH_RESULTS) {
           break;
         }
 
-        // Obtiene la línea actual. Se utiliza una cadena vacía como fallback para satisfacer el control de índices de TypeScript.
+        // Obtiene la línea actual.
         const currentLine = lines[i] ?? "";
 
-        // Comprueba si la línea contiene literalmente el patrón recibido.
+        // Continúa si la línea no contiene el texto.
         if (!currentLine.includes(params.searchText)) {
           continue;
         }
 
-        // Incrementa el número de coincidencias después de encontrar el patrón en la línea actual.
+        // Incrementa el número de coincidencias.
         totalMatches++;
 
-        // Calcula el índice inicial del bloque de contexto.
-        // CONTEXT_LINES define cuántas líneas anteriores se incluirán.
-        // Math.max evita generar índices negativos cuando la coincidencia está cerca del inicio del archivo.
+        // Calcula la primera línea de contexto.
         const startLine = Math.max(0, i - ActionsSettings.CONTEXT_LINES);
 
-        // Calcula el índice final del bloque de contexto.
-        // CONTEXT_LINES define cuántas líneas posteriores se incluirán.
-        // Math.min evita superar el último índice disponible cuando la coincidencia está cerca del final del archivo.
+        // Calcula la última línea de contexto.
         const endLine = Math.min(
           lines.length - 1,
           i + ActionsSettings.CONTEXT_LINES,
         );
 
-        // Almacena las líneas incluidas dentro del bloque de contexto de esta coincidencia.
+        // Almacena las líneas de contexto.
         const context: Array<{
           line: number;
           content: string;
           match: boolean;
         }> = [];
 
-        // Recorre desde la primera línea de contexto hasta la última, incluyendo la línea coincidente.
+        // Recorre las líneas de contexto.
         for (
           let contextIndex = startLine;
           contextIndex <= endLine;
           contextIndex++
         ) {
           context.push({
-            // Convierte el índice interno, basado en cero, en un número de línea legible, basado en uno.
+            // Obtiene el número de línea.
             line: contextIndex + 1,
 
-            // Almacena el contenido de la línea de contexto.
+            // Obtiene el contenido de la línea.
             content: lines[contextIndex] ?? "",
 
-            // Indica si esta es exactamente la línea donde se encontró el patrón.
-            // Las demás líneas solo forman parte del contexto.
+            // Indica si la línea contiene la coincidencia.
             match: contextIndex === i,
           });
         }
 
-        // Agrega la coincidencia al arreglo de resultados.
+        // Agrega la coincidencia encontrada.
         matches.push({
           filePath: FileSystemTools.toRelativePath(file),
           line: i + 1,
@@ -547,7 +428,7 @@ export class FileSystemToolActions {
       }
     }
 
-    // Retorna una respuesta estructurada y serializada.
+    // Retorna las coincidencias encontradas.
     return serialize({
       success: true,
       operation: "search_file_content",
@@ -556,7 +437,7 @@ export class FileSystemToolActions {
       fileExtension: params.file_extension ?? null,
       count: totalMatches,
 
-      // Indica que la búsqueda llegó al límite permitido. Debe interpretarse como: "Puede haber más coincidencias que no fueron procesadas".
+      // Indica si la búsqueda alcanzó el límite de resultados.
       truncated: totalMatches >= ActionsSettings.MAX_SEARCH_RESULTS,
 
       matches,

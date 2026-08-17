@@ -1,7 +1,7 @@
 {
   "name": "dev-assistant",
   "version": "0.1.0",
-  "description": "Asistente inteligente de documentación técnica con RAG, function Calling y claude API",
+  "description": "Asistente inteligente de documentación técnica con RAG, function Calling y LLMs API (Claude, OpenAI, Groq, Gemini, Ollama)",
   "main": "src/index.ts",
   "type": "module",
   "scripts": {
@@ -9,7 +9,7 @@
     "start": "tsx src/index.ts",
     "review": "tsx src/exercises/code-reviewer.ts",
     "ingest": "tsx src/rag/ingest/ingest.cli.ts",
-    "demo": "tsx src/agent/demo.ts",
+    "agent": "tsx src/labs/agent/init.cli.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
@@ -20,7 +20,7 @@
     "rag",
     "function-calling"
   ],
-  "author": "DevAssistant Curso IA",
+  "author": "MLahuasi",
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",

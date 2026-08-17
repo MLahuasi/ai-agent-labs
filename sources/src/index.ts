@@ -9,11 +9,11 @@ async function main(): Promise<void> {
 
   const { client: llm, model } = cli;
 
-  console.log("╔════════════════════════════════════════╗");
-  console.log("║        DevAssistant - Curso IA         ║");
-  console.log("╚════════════════════════════════════════╝");
+  console.log("╔══════════════════════════╗");
+  console.log("║        IA Agents         ║");
+  console.log("╚══════════════════════════╝");
   console.log("");
-  console.log("✅ DevAssistant configurado correctamente");
+  console.log("✅ Agente configurado correctamente");
   console.log("");
   console.log("📋 Configuración activa:");
   console.log(`   • Provider:       ${config.provider}`);

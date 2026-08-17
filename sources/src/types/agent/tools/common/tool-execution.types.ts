@@ -20,4 +20,10 @@ export interface ToolExecutionState {
 
   // Llamadas ya ejecutadas durante el flujo actual.
   executedToolCalls: Set<string>;
+
+  // Cantidad de llamadas solicitadas durante el turno actual.
+  toolCallsLastTurn: number;
+
+  // Máximo de llamadas permitidas durante el turno.
+  maxToolCalls: number;
 }

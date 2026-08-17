@@ -1,6 +1,5 @@
 import OpenAI from "openai";
 
-import { config } from "../../../../config/index.js";
 import { LlmClient } from "../../../../types/app/index.js";
 
 import {
@@ -8,10 +7,15 @@ import {
   AgentResponse,
   Message,
   ToolDefinition,
+  ToolExecutionState,
 } from "../../../../types/agent/index.js";
 
 import { toResponseInputItems } from "openai/lib/responses/ResponseInputItems.js";
-import { buildInput, toOpenAITools } from "./internal/index.js";
+import {
+  buildInput,
+  normalizeResponseOutput,
+  toOpenAITools,
+} from "./internal/index.js";
 import { OpenAiToolExecutor } from "./openai-tool-executor.js";
 import { ExecutionContext, OpenAiToolCall } from "./openai.types.js";
 
@@ -25,11 +29,21 @@ export class OpenAiClient implements LlmClient {
   // Ejecutor de las herramientas solicitadas por el modelo.
   private readonly toolExecutor: OpenAiToolExecutor;
 
-  constructor() {
-    this.client = new OpenAI({
-      apiKey: config.openaiApiKey,
-    });
+  // Modelo utilizado para generar las respuestas.
+  private readonly model: string;
 
+  /**
+   * Crea una nueva instancia del cliente de OpenAI.
+   *
+   * @param params Configuración necesaria para inicializar el cliente.
+   * @param params.apiKey Clave de API utilizada para autenticar las solicitudes.
+   * @param params.model Modelo de OpenAI utilizado para generar respuestas.
+   */
+  constructor({ apiKey, model }: { apiKey: string; model: string }) {
+    this.client = new OpenAI({
+      apiKey,
+    });
+    this.model = model;
     this.toolExecutor = new OpenAiToolExecutor();
   }
 
@@ -40,7 +54,6 @@ export class OpenAiClient implements LlmClient {
    * @param maxTokens Máximo de tokens permitidos en la respuesta.
    * @param systemPrompt Instrucciones opcionales para el modelo.
    * @param messages Historial opcional de conversación.
-   * @param previousResponseId Identificador opcional de una respuesta anterior.
    * @param tools Herramientas opcionales disponibles para el modelo.
    * @return Respuesta completa generada por OpenAI.
    */
@@ -49,18 +62,13 @@ export class OpenAiClient implements LlmClient {
     maxTokens: number,
     systemPrompt?: string,
     messages?: Message[],
-    previousResponseId?: string,
     tools?: ToolDefinition[],
   ) {
     return this.client.responses.create({
-      model: config.openaiModel,
+      model: this.model,
 
       ...(systemPrompt && {
         instructions: systemPrompt,
-      }),
-
-      ...(previousResponseId && {
-        previous_response_id: previousResponseId,
       }),
 
       input:
@@ -84,7 +92,6 @@ export class OpenAiClient implements LlmClient {
    * @param maxTokens Máximo de tokens permitidos en la respuesta.
    * @param systemPrompt Instrucciones opcionales para el modelo.
    * @param messages Historial opcional de conversación.
-   * @param previousResponseId Identificador opcional de una respuesta anterior.
    * @param tools Herramientas opcionales disponibles para el modelo.
    * @return Stream generado por OpenAI.
    */
@@ -93,18 +100,13 @@ export class OpenAiClient implements LlmClient {
     maxTokens: number,
     systemPrompt?: string,
     messages?: Message[],
-    previousResponseId?: string,
     tools?: ToolDefinition[],
   ) {
     return this.client.responses.stream({
-      model: config.openaiModel,
+      model: this.model,
 
       ...(systemPrompt && {
         instructions: systemPrompt,
-      }),
-
-      ...(previousResponseId && {
-        previous_response_id: previousResponseId,
       }),
 
       input:
@@ -126,11 +128,13 @@ export class OpenAiClient implements LlmClient {
    *
    * @param prompt Mensaje inicial enviado por el usuario.
    * @param messages Historial opcional de conversación.
+   * @param toolState Estado de ejecución de herramientas del turno actual.
    * @return Contexto inicial de ejecución.
    */
   private createExecutionContext(
     prompt: string,
-    messages?: Message[],
+    messages: AgentRequest["messages"],
+    toolState: ToolExecutionState,
   ): ExecutionContext {
     return {
       input: buildInput({
@@ -139,10 +143,7 @@ export class OpenAiClient implements LlmClient {
       }),
       totalInputTokens: 0,
       totalOutputTokens: 0,
-      toolState: {
-        toolsUsed: new Set(),
-        executedToolCalls: new Set(),
-      },
+      toolState,
     };
   }
 
@@ -184,6 +185,7 @@ export class OpenAiClient implements LlmClient {
       totalInputTokens: context.totalInputTokens,
       totalOutputTokens: context.totalOutputTokens,
       toolsUsed: [...context.toolState.toolsUsed],
+      toolCallsLastTurn: context.toolState.toolCallsLastTurn,
     };
   }
 
@@ -195,6 +197,11 @@ export class OpenAiClient implements LlmClient {
    * @param request.systemPrompt Instrucciones opcionales para el modelo.
    * @param request.messages Historial opcional de conversación.
    * @param request.tools Herramientas opcionales disponibles para el modelo.
+   * @param request.executeTool Función opcional utilizada para ejecutar herramientas.
+   * @param request.toolState Estado opcional de ejecución de herramientas del turno actual.
+   * @param request.maxIterations Máximo de iteraciones permitidas durante una ejecución con herramientas.
+   * @param request.maxTokens Máximo de tokens permitidos en una respuesta sin herramientas.
+   * @param request.maxTokensTools Máximo de tokens permitidos durante una ejecución con herramientas.
    * @return Respuesta generada por el modelo.
    */
   async ask({
@@ -202,12 +209,17 @@ export class OpenAiClient implements LlmClient {
     systemPrompt,
     messages,
     tools,
+    executeTool,
+    toolState,
+    maxIterations,
+    maxTokens,
+    maxTokensTools,
   }: AgentRequest): Promise<AgentResponse> {
     // Ejecuta una única consulta cuando no existen herramientas.
     if (!tools?.length) {
       const response = await this.create(
         prompt,
-        config.max_tokens,
+        maxTokens,
         systemPrompt,
         messages,
       );
@@ -215,28 +227,45 @@ export class OpenAiClient implements LlmClient {
       const text = response.output_text;
 
       return {
-        text: text || "OpenAI no retornó contenido de texto en la respuesta",
+        text: text ?? "OpenAI no retornó contenido de texto en la respuesta",
         totalInputTokens: response.usage?.input_tokens ?? 0,
         totalOutputTokens: response.usage?.output_tokens ?? 0,
         toolsUsed: [],
+        toolCallsLastTurn: 0,
       };
     }
 
+    if (!executeTool) {
+      throw new Error(
+        "Se proporcionaron tools pero no un ejecutor de herramientas.",
+      );
+    }
+
+    if (!toolState) {
+      throw new Error(
+        "Se proporcionaron tools pero no un estado de ejecución.",
+      );
+    }
+
     // Inicializa el contexto compartido entre las iteraciones.
-    const context = this.createExecutionContext(prompt, messages);
+    const context = this.createExecutionContext(prompt, messages, toolState);
 
     // Ejecuta iteraciones hasta obtener una respuesta final o alcanzar el límite.
-    for (let iteration = 0; iteration < config.max_iterations; iteration++) {
+    for (let iteration = 0; iteration < maxIterations; iteration++) {
       console.log(`\nPensando... (iteración ${iteration + 1})`);
+
+      const availableTools =
+        context.toolState.toolCallsLastTurn < context.toolState.maxToolCalls
+          ? tools
+          : undefined;
 
       // Envía el historial acumulado al modelo.
       const response = await this.create(
         context.input,
-        config.max_tokens_tools,
+        maxTokensTools,
         systemPrompt,
         undefined,
-        undefined,
-        tools,
+        availableTools,
       );
 
       this.addUsage(context, response.usage);
@@ -271,17 +300,18 @@ export class OpenAiClient implements LlmClient {
         toolCalls,
         tools,
         context.toolState,
+        executeTool,
       );
 
       // Agrega los resultados para la siguiente iteración.
       this.toolExecutor.appendResults(context.input, results);
     }
 
-    console.warn(`Límite de ${config.max_iterations} iteraciones alcanzado`);
+    console.warn(`Límite de ${maxIterations} iteraciones alcanzado`);
 
     return this.buildResponse(
       `Lo siento, no pude completar la tarea en ` +
-        `${config.max_iterations} iteraciones. ` +
+        `${maxIterations} iteraciones. ` +
         "Intenta una pregunta más específica.",
       context,
     );
@@ -295,6 +325,11 @@ export class OpenAiClient implements LlmClient {
    * @param request.systemPrompt Instrucciones opcionales para el modelo.
    * @param request.messages Historial opcional de conversación.
    * @param request.tools Herramientas opcionales disponibles para el modelo.
+   * @param request.executeTool Función opcional utilizada para ejecutar herramientas.
+   * @param request.toolState Estado opcional de ejecución de herramientas del turno actual.
+   * @param request.maxTokens Máximo de tokens permitidos en una respuesta sin herramientas.
+   * @param request.maxIterations Máximo de iteraciones permitidas durante una ejecución con herramientas.
+   * @param request.maxTokensTools Máximo de tokens permitidos durante una ejecución con herramientas.
    * @return Respuesta generada por el modelo.
    */
   async stream({
@@ -302,6 +337,11 @@ export class OpenAiClient implements LlmClient {
     systemPrompt,
     messages,
     tools,
+    executeTool,
+    toolState,
+    maxTokens,
+    maxIterations,
+    maxTokensTools,
   }: AgentRequest): Promise<AgentResponse> {
     // Ejecuta un único stream cuando no existen herramientas.
     if (!tools?.length) {
@@ -309,50 +349,63 @@ export class OpenAiClient implements LlmClient {
 
       const stream = await this.createStream(
         prompt,
-        config.max_tokens,
+        maxTokens,
         systemPrompt,
         messages,
       );
 
       // Acumula cada fragmento de texto recibido.
       stream.on("response.output_text.delta", (event) => {
-        process.stdout.write(event.delta);
         fullResponse += event.delta;
       });
 
       const finalResponse = await stream.finalResponse();
-
-      process.stdout.write("\n");
 
       return {
         text: fullResponse,
         totalInputTokens: finalResponse.usage?.input_tokens ?? 0,
         totalOutputTokens: finalResponse.usage?.output_tokens ?? 0,
         toolsUsed: [],
+        toolCallsLastTurn: 0,
       };
     }
 
+    if (!executeTool) {
+      throw new Error(
+        "Se proporcionaron tools pero no un ejecutor de herramientas.",
+      );
+    }
+
+    if (!toolState) {
+      throw new Error(
+        "Se proporcionaron tools pero no un estado de ejecución.",
+      );
+    }
+
     // Inicializa el contexto compartido entre las iteraciones.
-    const context = this.createExecutionContext(prompt, messages);
+    const context = this.createExecutionContext(prompt, messages, toolState);
 
     // Ejecuta una nueva generación en streaming por cada iteración.
-    for (let iteration = 0; iteration < config.max_iterations; iteration++) {
+    for (let iteration = 0; iteration < maxIterations; iteration++) {
       console.log(`\nPensando... (iteración ${iteration + 1})`);
 
       // Acumula el texto generado durante la iteración actual.
       let streamedText = "";
 
+      const availableTools =
+        context.toolState.toolCallsLastTurn < context.toolState.maxToolCalls
+          ? tools
+          : undefined;
+
       const stream = await this.createStream(
         context.input,
-        config.max_tokens_tools,
+        maxTokensTools,
         systemPrompt,
         undefined,
-        undefined,
-        tools,
+        availableTools,
       );
 
       stream.on("response.output_text.delta", (event) => {
-        process.stdout.write(event.delta);
         streamedText += event.delta;
       });
 
@@ -370,8 +423,6 @@ export class OpenAiClient implements LlmClient {
       if (toolCalls.length === 0) {
         const text = streamedText.trim() || response.output_text.trim();
 
-        process.stdout.write("\n");
-
         if (!text) {
           return this.buildResponse(
             "OpenAI no retornó texto ni llamadas a herramientas.",
@@ -384,25 +435,28 @@ export class OpenAiClient implements LlmClient {
         return this.buildResponse(text, context);
       }
 
+      // Normaliza la salida antes de reutilizarla como input.
+      const normalizedOutput = normalizeResponseOutput(response.output);
       // Agrega la salida del modelo al historial de la conversación.
-      context.input.push(...toResponseInputItems(response.output));
+      context.input.push(...toResponseInputItems(normalizedOutput));
 
       // Ejecuta las herramientas solicitadas por el modelo.
       const results = await this.toolExecutor.execute(
         toolCalls as OpenAiToolCall[],
         tools,
         context.toolState,
+        executeTool,
       );
 
       // Agrega los resultados para la siguiente iteración.
       this.toolExecutor.appendResults(context.input, results);
     }
 
-    console.warn(`Límite de ${config.max_iterations} iteraciones alcanzado`);
+    console.warn(`Límite de ${maxIterations} iteraciones alcanzado`);
 
     return this.buildResponse(
       `Lo siento, no pude completar la tarea en ` +
-        `${config.max_iterations} iteraciones. ` +
+        `${maxIterations} iteraciones. ` +
         "Intenta una pregunta más específica.",
       context,
     );
