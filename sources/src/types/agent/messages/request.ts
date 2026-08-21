@@ -53,4 +53,6 @@ export interface AgentRequest {
    * Máximo de iteraciones permitidas durante una ejecución con herramientas.
    */
   maxIterations: number;
+
+  onChunk?: (chunk: string) => void;
 }

@@ -1,10 +1,11 @@
-import readline from "node:readline/promises";
-import { stdin as input, stdout as output } from "node:process";
-
+import type { Interface } from "node:readline/promises";
 import { config } from "../config/index.js";
 import { Conversation } from "../chat/index.js";
 import { DOCUMENTATION_ASSISTANT_PROMPT } from "../llm/prompts/system.prompt.js";
 import { LlmClient } from "../types/app/index.js";
+import { GuardrailsService } from "../security/guardrails.service.js";
+import { printStats } from "../stats/index.js";
+import { printLlmUsage } from "../cost/index.js";
 
 /**
  * Inicia un chat interactivo por consola.
@@ -12,12 +13,11 @@ import { LlmClient } from "../types/app/index.js";
  * @param llm Cliente LLM utilizado durante la conversación.
  * @return No retorna ningún valor.
  */
-export async function startCLI(llm: LlmClient): Promise<void> {
-  const rl = readline.createInterface({
-    input,
-    output,
-  });
-
+export async function startCLI(
+  rl: Interface,
+  llm: LlmClient,
+  guardrails: GuardrailsService,
+): Promise<void> {
   const conversation = new Conversation(DOCUMENTATION_ASSISTANT_PROMPT, {
     maxTokens: config.max_tokens,
     maxTokensTools: config.max_tokens_tools,
@@ -32,7 +32,7 @@ export async function startCLI(llm: LlmClient): Promise<void> {
   console.log("╚════════════════════════════════════════╝");
   console.log("");
   console.log("💬 Escribe tu pregunta y presiona Enter.");
-  console.log("   Comandos: /clear, /stats, /exit");
+  console.log("   Comandos: /clear, /stats, /usage, /exit");
   console.log("");
 
   try {
@@ -55,6 +55,11 @@ export async function startCLI(llm: LlmClient): Promise<void> {
         continue;
       }
 
+      if (userInput === "/usage") {
+        printLlmUsage();
+        continue;
+      }
+
       if (userInput === "/exit" || userInput === "/salida") {
         const stats = conversation.getStats();
 
@@ -67,15 +72,25 @@ export async function startCLI(llm: LlmClient): Promise<void> {
         break;
       }
 
+      const guardrailResult = guardrails.checkInput(userInput);
+
+      if (!guardrailResult.safe) {
+        guardrails.printResult("", userInput, guardrailResult);
+        continue;
+      }
+
       try {
         process.stdout.write("\nAsistente: ");
 
-        await conversation.send(userInput);
+        // El cliente retorna el contenido completo generado.
+        // La responsabilidad de mostrarlo pertenece al laboratorio.
+        const response = await conversation.send(guardrailResult.sanitized);
 
         /**
          * El cliente de streaming ya imprime
          * los fragmentos recibidos.
          */
+        process.stdout.write(response);
         process.stdout.write("\n\n");
       } catch (error) {
         const message =
@@ -85,28 +100,5 @@ export async function startCLI(llm: LlmClient): Promise<void> {
       }
     }
   } finally {
-    rl.close();
   }
-}
-
-/**
- * Imprime las estadísticas actuales de una conversación.
- *
- * @param conversation Conversación utilizada para obtener las estadísticas.
- * @return No retorna ningún valor.
- */
-function printStats(conversation: Conversation): void {
-  const stats = conversation.getStats();
-
-  console.log("\n📊 Estadísticas de la conversación:");
-  console.log(`   • Turnos: ${stats.turns}`);
-  console.log(`   • Tokens de entrada acumulados: ${stats.inputTokens}`);
-  console.log(`   • Tokens de salida acumulados: ${stats.outputTokens}`);
-  console.log(
-    `   • Tokens estimados en contexto actual: ` +
-      `${conversation.estimateCurrentTokens()}`,
-  );
-  console.log(
-    `   • Llamadas a tools en el último turno: ${stats.toolCallsLastTurn}\n`,
-  );
 }

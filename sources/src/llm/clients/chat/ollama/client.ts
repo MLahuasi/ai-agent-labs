@@ -18,6 +18,10 @@ import type {
   OllamaToolCall,
   StreamIterationResult,
 } from "./ollama.types.js";
+import {
+  LlmUsageLimiterService,
+  LlmUsageTrackerService,
+} from "../../../../cost/index.js";
 
 interface OllamaClientOptions {
   host: string;
@@ -27,6 +31,8 @@ interface OllamaClientOptions {
   keepAlive: string;
   temperature: number;
   numCtx: number;
+  usageLimiter: LlmUsageLimiterService;
+  usageTracker: LlmUsageTrackerService;
 }
 
 /**
@@ -38,6 +44,12 @@ export class OllamaClient implements LlmClient {
 
   // Ejecutor de las herramientas solicitadas por el modelo.
   private readonly toolExecutor: OllamaToolExecutor;
+
+  /** Controla y limita la cantidad de llamadas realizadas a los proveedores LLM. */
+  private readonly usageLimiter: LlmUsageLimiterService;
+
+  /** Registra y acumula el consumo real de tokens generado por las llamadas al LLM. */
+  private readonly usageTracker: LlmUsageTrackerService;
 
   // Modelo utilizado para generar las respuestas.
   private readonly model: string;
@@ -77,17 +89,38 @@ export class OllamaClient implements LlmClient {
     keepAlive,
     temperature,
     numCtx,
+    usageLimiter,
+    usageTracker,
   }: OllamaClientOptions) {
     this.client = new Ollama({
       host,
     });
     this.model = model;
+    this.usageLimiter = usageLimiter;
+    this.usageTracker = usageTracker;
     this.systemPrompt = systemPrompt;
     this.think = think;
     this.keepAlive = keepAlive;
     this.temperature = temperature;
     this.numCtx = numCtx;
     this.toolExecutor = new OllamaToolExecutor();
+  }
+
+  /**
+   * Registra el consumo acumulado de una ejecución.
+   */
+  private recordUsage(
+    requests: number,
+    inputTokens: number,
+    outputTokens: number,
+  ): void {
+    this.usageTracker.record({
+      provider: "ollama",
+      model: this.model,
+      requests,
+      inputTokens,
+      outputTokens,
+    });
   }
 
   /**
@@ -223,6 +256,8 @@ export class OllamaClient implements LlmClient {
     context: ExecutionContext,
     includeConversation = false,
   ): AgentResponse {
+    // Registra toda la ejecución, incluidas las iteraciones con tools.
+    this.recordUsage(1, context.totalInputTokens, context.totalOutputTokens);
     return {
       text,
       totalInputTokens: context.totalInputTokens,
@@ -269,17 +304,24 @@ export class OllamaClient implements LlmClient {
         systemPrompt: this.buildSystemPrompt(systemPrompt),
         messages,
       });
-
+      // Una consulta directa consume una request.
+      this.usageLimiter.consume();
       const response = await this.create(maxTokens, conversation);
 
       const text =
         response.message.content?.trim() ||
         "Ollama no retornó contenido de texto en la respuesta.";
 
+      const inputTokens = response.prompt_eval_count ?? 0;
+      const outputTokens = response.eval_count ?? 0;
+
+      // Registra el consumo correspondiente a la llamada directa.
+      this.recordUsage(1, inputTokens, outputTokens);
+
       return {
         text,
-        totalInputTokens: response.prompt_eval_count ?? 0,
-        totalOutputTokens: response.eval_count ?? 0,
+        totalInputTokens: inputTokens,
+        totalOutputTokens: outputTokens,
         toolsUsed: [],
         toolCallsLastTurn: 0,
       };
@@ -296,7 +338,11 @@ export class OllamaClient implements LlmClient {
         "Se proporcionaron tools pero no un estado de ejecución.",
       );
     }
-
+    /**
+     * Consumir una solicitud inmediatamente antes
+     * de realizar la llamada real al proveedor.
+     */
+    this.usageLimiter.consume();
     // Inicializa el contexto compartido entre las iteraciones.
     const context = this.createExecutionContext(
       prompt,
@@ -399,6 +445,7 @@ export class OllamaClient implements LlmClient {
     maxTokens,
     maxIterations,
     maxTokensTools,
+    onChunk,
   }: AgentRequest): Promise<AgentResponse> {
     // Ejecuta un único stream cuando no existen herramientas.
     if (!tools?.length) {
@@ -408,33 +455,39 @@ export class OllamaClient implements LlmClient {
         messages,
       });
 
+      // Una consulta directa consume una request.
+      this.usageLimiter.consume();
       const stream = await this.createStream(maxTokens, conversation);
 
-      let content = "";
-      let totalInputTokens = 0;
-      let totalOutputTokens = 0;
+      let fullResponse = "";
+      let inputTokens = 0;
+      let outputTokens = 0;
 
       // Procesa los fragmentos generados durante el stream.
       for await (const chunk of stream) {
-        if (chunk.message.content) {
-          content += chunk.message.content;
+        const text = chunk.message.content ?? "";
+        if (text) {
+          fullResponse += text;
+          // Expone el fragmento al consumidor.
+          onChunk?.(text);
         }
 
         if (chunk.done) {
-          totalInputTokens = chunk.prompt_eval_count ?? totalInputTokens;
-
-          totalOutputTokens = chunk.eval_count ?? totalOutputTokens;
+          inputTokens = chunk.prompt_eval_count ?? inputTokens;
+          outputTokens = chunk.eval_count ?? outputTokens;
         }
       }
 
       const text =
-        content.trim() ||
+        fullResponse.trim() ||
         "Ollama no retornó contenido de texto en la respuesta.";
+
+      this.recordUsage(1, inputTokens, outputTokens);
 
       return {
         text,
-        totalInputTokens,
-        totalOutputTokens,
+        totalInputTokens: inputTokens,
+        totalOutputTokens: outputTokens,
         toolsUsed: [],
         toolCallsLastTurn: 0,
       };
@@ -451,7 +504,11 @@ export class OllamaClient implements LlmClient {
         "Se proporcionaron tools pero no un estado de ejecución.",
       );
     }
-
+    /**
+     * Consumir una solicitud inmediatamente antes
+     * de realizar la llamada real al proveedor.
+     */
+    this.usageLimiter.consume();
     // Inicializa el contexto compartido entre las iteraciones.
     const context = this.createExecutionContext(
       prompt,
@@ -473,6 +530,7 @@ export class OllamaClient implements LlmClient {
         context.conversation,
         maxTokensTools,
         availableTools,
+        onChunk,
       );
 
       this.addUsage(context, result.inputTokens, result.outputTokens);
@@ -536,10 +594,11 @@ export class OllamaClient implements LlmClient {
     conversation: OllamaMessage[],
     maxTokensTools: number,
     tools: ToolDefinition[] | undefined,
+    onChunk: ((chunk: string) => void) | undefined,
   ): Promise<StreamIterationResult> {
     const stream = await this.createStream(maxTokensTools, conversation, tools);
 
-    let text = "";
+    let fullResponse = "";
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
 
@@ -553,11 +612,12 @@ export class OllamaClient implements LlmClient {
     };
 
     for await (const chunk of stream) {
-      const content = chunk.message.content ?? "";
-
-      if (content) {
-        text += content;
-        assistantMessage.content += content;
+      const text = chunk.message.content ?? "";
+      if (text) {
+        fullResponse += text;
+        assistantMessage.content += text;
+        // Expone el fragmento al consumidor.
+        onChunk?.(text);
       }
 
       // Acumula las llamadas a herramientas encontradas.
@@ -576,7 +636,7 @@ export class OllamaClient implements LlmClient {
     }
 
     return {
-      text,
+      text: fullResponse,
       assistantMessage,
       toolCalls,
       inputTokens: totalInputTokens,

@@ -79,6 +79,43 @@ export class FileSystemTools {
   }
 
   /**
+   * Construye una ruta absoluta dentro de la raíz del proyecto.
+   *
+   * La ruta resultante se valida para garantizar que permanezca
+   * dentro de PROJECT_ROOT.
+   *
+   * @param segments Segmentos que forman la ruta relativa al proyecto.
+   * @return Ruta absoluta validada dentro del proyecto.
+   */
+  static resolveProjectPath(...segments: string[]): string {
+    // Verifica que se haya recibido al menos un segmento.
+    if (segments.length === 0) {
+      throw new Error("Debe especificarse al menos un segmento de ruta.");
+    }
+
+    // Evita segmentos vacíos.
+    if (segments.some((segment) => !segment.trim())) {
+      throw new Error("Los segmentos de la ruta no pueden estar vacíos.");
+    }
+
+    // Construye una ruta relativa utilizando las reglas
+    // específicas del sistema operativo.
+    const targetPath = path.join(...segments);
+
+    // Resuelve y valida la ruta contra PROJECT_ROOT.
+    const absolutePath = this.resolveSecurePath(targetPath);
+
+    // Evita utilizar rutas que escapen del proyecto.
+    if (!absolutePath) {
+      throw new Error(
+        `La ruta debe permanecer dentro del proyecto: ${targetPath}`,
+      );
+    }
+
+    return absolutePath;
+  }
+
+  /**
    * Construye la ruta de un elemento dentro de un directorio.
    *
    * @param directoryPath Ruta del directorio.
@@ -419,5 +456,25 @@ export class FileSystemTools {
 
     // Guarda contenido binario.
     await fsAsync.writeFile(filePath, content);
+  }
+
+  /**
+   * Obtiene el nombre de un archivo.
+   *
+   * @param filePath Ruta del archivo.
+   * @return Nombre del archivo.
+   */
+  static getFileName(filePath: string): string {
+    return path.basename(filePath);
+  }
+
+  /**
+   * Obtiene la extensión de un archivo normalizada en minúsculas.
+   *
+   * @param filePath Ruta del archivo.
+   * @return Extensión del archivo.
+   */
+  static getFileExtension(filePath: string): string {
+    return path.extname(filePath).toLowerCase();
   }
 }

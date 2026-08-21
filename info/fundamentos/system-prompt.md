@@ -1,58 +1,152 @@
-# System Prompts
+# 🤖 System Prompts
 
-## 🤖 ¿Qué es un System Prompt?
+Un **System Prompt** es una instrucción de alto nivel que se proporciona al modelo para definir cómo debe comportarse durante una interacción.
 
-Un **System Prompt** es una instrucción de alto nivel que se envía al modelo antes de la consulta del usuario. Su objetivo es definir el comportamiento esperado de la IA, incluyendo:
+Permite establecer reglas globales relacionadas con:
 
-- 🎯 Su rol o especialidad (por ejemplo, _Senior Developer especializado en Code Reviews_).
-- 📝 El formato que debe seguir en sus respuestas.
-- ✅ Los criterios que debe evaluar o priorizar.
-- 🌎 El idioma en el que debe responder.
-- 📏 Restricciones de longitud, estilo y nivel de detalle.
+- 🎯 Rol o especialidad del modelo.
+- 📝 Formato de las respuestas.
+- ✅ Criterios que debe evaluar o priorizar.
+- 🌎 Idioma de respuesta.
+- 📏 Longitud, estilo y nivel de detalle.
+- 🔒 Restricciones y límites de comportamiento.
 
-En otras palabras, el System Prompt funciona como una guía permanente para cada interacción. Aunque el usuario haga la misma pregunta, la respuesta puede variar significativamente dependiendo de las instrucciones definidas en el System Prompt.
+En términos simples:
 
----
+```text
+System Prompt
+      +
+Mensaje del usuario
+      ↓
+     LLM
+      ↓
+Respuesta condicionada
+```
 
-## 🔍 Objetivo de esta prueba
-
-Esta comparación busca mostrar cómo un mismo modelo responde ante la misma consulta:
-
-### ⚪ Sin System Prompt
-
-- El modelo responde utilizando únicamente su conocimiento general.
-- Decide libremente el formato, nivel de detalle y estructura de la respuesta.
-- Puede generar respuestas más extensas o inconsistentes entre ejecuciones.
-
-### 🟢 Con System Prompt
-
-- El modelo sigue reglas predefinidas.
-- Mantiene una estructura consistente.
-- Prioriza los aspectos indicados en las instrucciones.
-- Puede reducir significativamente la longitud de la respuesta.
-- Produce resultados más alineados con las necesidades de la aplicación.
+El mismo mensaje de usuario puede producir respuestas diferentes dependiendo de las instrucciones definidas en el `System Prompt`.
 
 ---
 
-## 📊 Resultado esperado
+## 🎯 Objetivo
 
-Al comparar ambas respuestas es posible observar diferencias en:
+El comportamiento de un mismo modelo cambia cuando procesa exactamente la misma entrada:
 
-- 📐 Estructura y organización.
-- ✂️ Cantidad de texto generado.
-- 🎯 Nivel de enfoque sobre los problemas relevantes.
-- 🔒 Énfasis en seguridad y buenas prácticas.
+```text
+⚪ Sin System Prompt
+        vs.
+🟢 Con System Prompt
+```
+
+La comparación permite observar diferencias en:
+
+- 📐 Estructura de la respuesta.
+- 🎯 Nivel de enfoque.
+- ✂️ Cantidad de contenido generado.
+- 🔒 Priorización de seguridad y buenas prácticas.
+- 📏 Nivel de detalle.
 - ⚡ Consumo potencial de tokens.
 
-La siguiente sección muestra ambas ejecuciones utilizando exactamente el mismo código como entrada.
+---
+
+# 🧩 ¿Dónde interviene el System Prompt?
+
+El `System Prompt` forma parte del contexto enviado al modelo.
+
+```mermaid
+flowchart LR
+
+    SYSTEM["🧠 System Prompt<br/>Rol · Reglas · Restricciones"]
+
+    USER["👤 Mensaje del usuario"]
+
+    CONTEXT["🧩 Contexto"]
+
+    LLM["🤖 LLM"]
+
+    RESPONSE["💬 Respuesta"]
+
+    SYSTEM --> CONTEXT
+    USER --> CONTEXT
+    CONTEXT --> LLM
+    LLM --> RESPONSE
+
+    classDef system fill:#1565C0,color:#ffffff,stroke:#0D47A1,stroke-width:2px;
+    classDef user fill:#2E7D32,color:#ffffff,stroke:#1B5E20,stroke-width:2px;
+    classDef context fill:#EF6C00,color:#ffffff,stroke:#E65100,stroke-width:2px;
+    classDef model fill:#7B1FA2,color:#ffffff,stroke:#4A148C,stroke-width:2px;
+    classDef response fill:#00897B,color:#ffffff,stroke:#00695C,stroke-width:2px;
+
+    class SYSTEM system;
+    class USER user;
+    class CONTEXT context;
+    class LLM model;
+    class RESPONSE response;
+```
+
+El usuario proporciona la tarea concreta, mientras que el `System Prompt` establece las reglas bajo las cuales debe ejecutarse.
+
+Por ejemplo:
+
+```text
+🧠 System Prompt
+Eres un Senior Developer especializado en Code Reviews.
+
+👤 Usuario
+Revisa este código.
+```
+
+El modelo procesa ambas instrucciones como parte de su contexto.
 
 ---
 
-## Laboratorio
+# ⚪ Sin System Prompt
 
-**Pregunta**:
+Cuando no se proporciona un `System Prompt`, el modelo responde utilizando únicamente la información disponible en la consulta y su comportamiento general.
 
-Revisa este código:
+Esto implica que el modelo decide libremente aspectos como:
+
+- estructura;
+- longitud;
+- nivel de detalle;
+- problemas que considera importantes;
+- formato de presentación.
+
+El resultado puede ser válido, pero menos consistente entre diferentes casos de uso.
+
+---
+
+# 🟢 Con System Prompt
+
+Cuando existe un `System Prompt`, la aplicación puede definir explícitamente cómo debe comportarse el modelo.
+
+Por ejemplo:
+
+```text
+Eres un Senior Developer con 10+ años de experiencia realizando code reviews.
+
+Prioriza:
+- Correctitud
+- Seguridad
+- Legibilidad
+- Mantenibilidad
+
+Sé conciso.
+Máximo 5 hallazgos.
+```
+
+Esto permite conseguir respuestas más alineadas con los requisitos de la aplicación.
+
+---
+
+# [🧪 Laboratorio](../../sources/src/labs/02-system-prompt.ts)
+
+Se utiliza el mismo código en las dos ejecuciones.
+
+## 📥 Código de entrada
+
+**Pregunta:**
+
+> Revisa este código:
 
 ```javascript
 async function getUser(id) {
@@ -72,15 +166,15 @@ function calcularDescuento(precio, tipo) {
 }
 ```
 
-### ✅ Demo 1
-
-Enviando código SIN system prompt
-
 ---
 
-## Respuesta:
+# ⚪ Demo 1 — Sin System Prompt
 
-## Revisión de Código
+El código se envía directamente al modelo sin instrucciones adicionales que controlen la revisión.
+
+## 📤 Respuesta
+
+### Revisión de Código
 
 ### 🚨 Problemas Críticos
 
@@ -122,8 +216,8 @@ return precio * 0.8;
 
 // ✅ Nombrar las constantes
 const DESCUENTOS = {
-  vip: 0.2, // 20% de descuento
-  regular: 0.1, // 10% de descuento
+  vip: 0.2,
+  regular: 0.1,
 };
 ```
 
@@ -151,11 +245,10 @@ function calcularDescuento(precio, tipo) {
   }
 
   const descuento = DESCUENTOS[tipo] ?? 0;
+
   return precio * (1 - descuento);
 }
 ```
-
----
 
 ### 📋 Resumen
 
@@ -168,13 +261,13 @@ function calcularDescuento(precio, tipo) {
 
 ---
 
-## ✅ Demo 2
+# 🟢 Demo 2 — Con System Prompt
 
-#### Enviando código CON system prompt
+En esta ejecución se utiliza exactamente el mismo código, pero antes se configura el comportamiento esperado del modelo.
 
-**System Prompt**
+## 🧠 System Prompt
 
-```txt
+```text
 Eres un Senior Developer con 10+ años de experiencia realizando code reviews.
 
 Analiza únicamente los aspectos que tengan impacto real:
@@ -230,9 +323,9 @@ Responde en español si el código está en español; en inglés en caso contrar
 
 ---
 
-Respuesta:
+## 📤 Respuesta
 
-### Resumen:
+### Resumen
 
 Código con un problema crítico de seguridad en la consulta SQL y algunas oportunidades de mejora en la lógica de descuentos.
 
@@ -257,17 +350,17 @@ Código con un problema crítico de seguridad en la consulta SQL y algunas oport
 ### 💡 Código sugerido
 
 ```javascript
-// ✅ Parametrización para evitar SQL Injection + manejo de not found
 async function getUser(id) {
   const query = "SELECT * FROM users WHERE id = ?";
   const result = await db.query(query, [id]);
+
   if (!result || result.length === 0) {
-    return null; // o lanzar un error específico
+    return null;
   }
+
   return result[0];
 }
 
-// ✅ Comparación estricta y descuentos como constantes
 const DESCUENTOS = {
   vip: 0.8,
   regular: 0.9,
@@ -279,15 +372,197 @@ function calcularDescuento(precio, tipo) {
 }
 ```
 
-> ⚠️ La sintaxis del placeholder (`?`, `$1`, etc.) depende del driver de base de datos que uses.
+> ⚠️ La sintaxis del placeholder (`?`, `$1`, etc.) depende del driver de base de datos utilizado.
 
-### Puntuación
+### ⭐ Puntuación
 
-4/10
+**4/10**
 
-## 🚀 Comentario
+### 🚀 Comentario
 
 El SQL Injection es un bloqueante crítico, pero con los ajustes sugeridos este código queda limpio y seguro. ¡Buen camino!
+
+---
+
+# 🔍 Comparación de resultados
+
+Las dos ejecuciones utilizan:
+
+```text
+Mismo modelo
++
+Misma pregunta
++
+Mismo código
+```
+
+La diferencia está en las instrucciones añadidas mediante el `System Prompt`.
+
+| Aspecto      | ⚪ Sin System Prompt         | 🟢 Con System Prompt  |
+| ------------ | ---------------------------- | --------------------- |
+| Rol          | Genérico                     | Senior Developer      |
+| Prioridades  | Decididas por el modelo      | Definidas previamente |
+| Formato      | Libre                        | Estructurado          |
+| Longitud     | Variable                     | Limitada              |
+| Hallazgos    | Sin límite explícito         | Máximo 5              |
+| Seguridad    | Según criterio del modelo    | Prioridad explícita   |
+| Idioma       | No controlado explícitamente | Definido por reglas   |
+| Consistencia | Menor                        | Mayor                 |
+
+El `System Prompt` no modifica el código recibido.
+
+Modifica **cómo debe analizarlo y cómo debe construir la respuesta**.
+
+---
+
+# 🔄 Flujo de ambas ejecuciones
+
+```mermaid
+flowchart TD
+
+    CODE["💻 Código"]
+
+    subgraph WITHOUT["⚪ Sin System Prompt"]
+        W1["👤 Instrucción del usuario"]
+        W2["🤖 LLM"]
+        W3["💬 Respuesta libre"]
+
+        W1 --> W2
+        W2 --> W3
+    end
+
+    subgraph WITH["🟢 Con System Prompt"]
+        S1["🧠 System Prompt"]
+        U1["👤 Instrucción del usuario"]
+        C1["🧩 Contexto"]
+        M1["🤖 LLM"]
+        R1["📋 Respuesta estructurada"]
+
+        S1 --> C1
+        U1 --> C1
+        C1 --> M1
+        M1 --> R1
+    end
+
+    CODE --> W1
+    CODE --> U1
+
+    classDef input fill:#1565C0,color:#ffffff,stroke:#0D47A1,stroke-width:2px;
+    classDef system fill:#2E7D32,color:#ffffff,stroke:#1B5E20,stroke-width:2px;
+    classDef context fill:#EF6C00,color:#ffffff,stroke:#E65100,stroke-width:2px;
+    classDef model fill:#7B1FA2,color:#ffffff,stroke:#4A148C,stroke-width:2px;
+    classDef output fill:#00897B,color:#ffffff,stroke:#00695C,stroke-width:2px;
+
+    class CODE,W1,U1 input;
+    class S1 system;
+    class C1 context;
+    class W2,M1 model;
+    class W3,R1 output;
+```
+
+---
+
+# 🔎 Relación con RAG
+
+El `System Prompt` y `RAG` cumplen responsabilidades diferentes.
+
+El `System Prompt` define principalmente:
+
+```text
+¿Cómo debe comportarse el modelo?
+```
+
+RAG incorpora otra pregunta:
+
+```text
+¿Qué información externa necesita el modelo
+para responder esta consulta?
+```
+
+Por tanto, una futura arquitectura RAG puede extender el contexto sin sustituir el `System Prompt`.
+
+Actualmente:
+
+```text
+System Prompt
+      +
+Mensaje del usuario
+      ↓
+     LLM
+```
+
+Con historial de conversación:
+
+```text
+System Prompt
+      +
+   Historial
+      +
+Mensaje actual
+      ↓
+     LLM
+```
+
+Y posteriormente con RAG:
+
+```text
+System Prompt
+      +
+   Historial
+      +
+Contexto recuperado
+      +
+Mensaje actual
+      ↓
+     LLM
+```
+
+---
+
+# ✅ Beneficios del System Prompt
+
+Utilizar un `System Prompt` permite:
+
+- 🎯 Especializar el comportamiento del modelo.
+- 📐 Mantener formatos consistentes.
+- ✂️ Controlar el nivel de detalle.
+- 🔒 Priorizar criterios importantes.
+- 🌎 Definir el idioma esperado.
+- 📏 Limitar la extensión de las respuestas.
+- 🧩 Separar las reglas de comportamiento de la consulta del usuario.
+- 🔎 Preparar una estructura de contexto extensible posteriormente con RAG.
+
+---
+
+# ⚠️ Consideraciones
+
+Un `System Prompt` permite orientar el comportamiento del modelo, pero forma parte de una arquitectura más amplia.
+
+A medida que la aplicación evolucione pueden incorporarse otras capas:
+
+```text
+🧠 System Prompt
+        ↓
+💬 Conversación
+        ↓
+🔎 RAG
+        ↓
+🛠️ Tools
+        ↓
+🛡️ Guardrails
+        ↓
+🤖 Agentes
+```
+
+Cada mecanismo resuelve una responsabilidad diferente.
+
+El `System Prompt` se ocupa principalmente de **definir instrucciones y comportamiento**.
+
+# 📖 Resumen
+
+**Un `System Prompt` define las instrucciones globales que condicionan el comportamiento de un LLM. Permite controlar el rol, formato, prioridades, restricciones y nivel de detalle de las respuestas sin modificar la consulta del usuario.**
+
+**En una arquitectura RAG, estas instrucciones permanecen separadas del conocimiento recuperado: el `System Prompt` define cómo debe actuar el modelo, mientras que RAG aporta la información externa necesaria para responder.**
 
 ---
 

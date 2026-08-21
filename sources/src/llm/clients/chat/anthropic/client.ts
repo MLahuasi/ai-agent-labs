@@ -20,6 +20,10 @@ import {
 import { AnthropicToolExecutor } from "./anthropic-tool-executor.js";
 
 import type { AnthropicToolCall, ExecutionContext } from "./anthropic.types.js";
+import {
+  LlmUsageLimiterService,
+  LlmUsageTrackerService,
+} from "../../../../cost/index.js";
 
 /**
  * Cliente encargado de gestionar la comunicación con Anthropic.
@@ -34,6 +38,12 @@ export class AnthropicClient implements LlmClient {
   // Modelo utilizado para generar las respuestas.
   private readonly model: string;
 
+  /** Controla y limita la cantidad de llamadas realizadas a los proveedores LLM. */
+  private readonly usageLimiter: LlmUsageLimiterService;
+
+  /** Registra y acumula el consumo real de tokens generado por las llamadas al LLM. */
+  private readonly usageTracker: LlmUsageTrackerService;
+
   /**
    * Crea una nueva instancia del cliente de Anthropic.
    *
@@ -41,12 +51,41 @@ export class AnthropicClient implements LlmClient {
    * @param params.apiKey Clave de API utilizada para autenticar las solicitudes.
    * @param params.model Modelo de Anthropic utilizado para generar respuestas.
    */
-  constructor({ apiKey, model }: { apiKey: string; model: string }) {
+  constructor({
+    apiKey,
+    model,
+    usageLimiter,
+    usageTracker,
+  }: {
+    apiKey: string;
+    model: string;
+    usageLimiter: LlmUsageLimiterService;
+    usageTracker: LlmUsageTrackerService;
+  }) {
     this.client = new Anthropic({
       apiKey,
     });
     this.model = model;
+    this.usageLimiter = usageLimiter;
+    this.usageTracker = usageTracker;
     this.toolExecutor = new AnthropicToolExecutor();
+  }
+
+  /**
+   * Registra el consumo acumulado de una ejecución.
+   */
+  private recordUsage(
+    requests: number,
+    inputTokens: number,
+    outputTokens: number,
+  ): void {
+    this.usageTracker.record({
+      provider: "anthropic",
+      model: this.model,
+      requests,
+      inputTokens,
+      outputTokens,
+    });
   }
 
   /**
@@ -156,6 +195,9 @@ export class AnthropicClient implements LlmClient {
     text: string,
     context: ExecutionContext,
   ): AgentResponse {
+    // Registra toda la ejecución, incluidas las iteraciones con tools.
+    this.recordUsage(1, context.totalInputTokens, context.totalOutputTokens);
+
     return {
       text,
       totalInputTokens: context.totalInputTokens,
@@ -193,6 +235,8 @@ export class AnthropicClient implements LlmClient {
   }: AgentRequest): Promise<AgentResponse> {
     // Ejecuta una única consulta cuando no existen herramientas.
     if (!tools?.length) {
+      // Una consulta directa consume una request.
+      this.usageLimiter.consume();
       const response = await this.create(
         systemPrompt ?? "",
         maxTokens,
@@ -201,10 +245,14 @@ export class AnthropicClient implements LlmClient {
 
       const text = getAnthropicResponseText(response.content);
 
+      const inputTokens = response.usage?.input_tokens ?? 0;
+      const outputTokens = response.usage?.output_tokens ?? 0;
+      this.recordUsage(1, inputTokens, outputTokens);
+
       return {
         text: text || "Anthropic no retornó contenido de texto en la respuesta",
-        totalInputTokens: response.usage.input_tokens ?? 0,
-        totalOutputTokens: response.usage.output_tokens ?? 0,
+        totalInputTokens: inputTokens,
+        totalOutputTokens: outputTokens,
         toolsUsed: [],
         toolCallsLastTurn: 0,
       };
@@ -221,6 +269,12 @@ export class AnthropicClient implements LlmClient {
         "Se proporcionaron tools pero no un estado de ejecución.",
       );
     }
+
+    /**
+     * Consumir una solicitud inmediatamente antes
+     * de realizar la llamada real al proveedor.
+     */
+    this.usageLimiter.consume();
 
     // Inicializa el contexto compartido entre las iteraciones.
     const context = this.createExecutionContext(prompt, messages, toolState);
@@ -344,9 +398,12 @@ export class AnthropicClient implements LlmClient {
     maxTokens,
     maxIterations,
     maxTokensTools,
+    onChunk,
   }: AgentRequest): Promise<AgentResponse> {
     // Ejecuta un único stream cuando no existen herramientas.
     if (!tools?.length) {
+      // Una consulta directa consume una request.
+      this.usageLimiter.consume();
       let fullResponse = "";
 
       const stream = await this.createStream(
@@ -358,6 +415,8 @@ export class AnthropicClient implements LlmClient {
       // Acumula cada fragmento de texto recibido.
       stream.on("text", (chunk) => {
         fullResponse += chunk;
+        // Entrega el fragmento al consumidor del cliente.
+        onChunk?.(chunk);
       });
 
       const finalMessage = await stream.finalMessage();
@@ -369,10 +428,15 @@ export class AnthropicClient implements LlmClient {
         finalText?.trim() ||
         "Anthropic no retornó contenido de texto en la respuesta";
 
+      const inputTokens = finalMessage.usage.input_tokens ?? 0;
+      const outputTokens = finalMessage.usage.output_tokens ?? 0;
+
+      this.recordUsage(1, inputTokens, outputTokens);
+
       return {
         text,
-        totalInputTokens: finalMessage.usage.input_tokens,
-        totalOutputTokens: finalMessage.usage.output_tokens,
+        totalInputTokens: inputTokens,
+        totalOutputTokens: outputTokens,
         toolsUsed: [],
         toolCallsLastTurn: 0,
       };
@@ -389,6 +453,11 @@ export class AnthropicClient implements LlmClient {
         "Se proporcionaron tools pero no un estado de ejecución.",
       );
     }
+    /**
+     * Consumir una solicitud inmediatamente antes
+     * de realizar la llamada real al proveedor.
+     */
+    this.usageLimiter.consume();
 
     // Inicializa el contexto compartido entre las iteraciones.
     const context = this.createExecutionContext(prompt, messages, toolState);
@@ -414,11 +483,12 @@ export class AnthropicClient implements LlmClient {
 
       stream.on("text", (chunk) => {
         streamedText += chunk;
+        // Entrega el fragmento al consumidor del cliente.
+        onChunk?.(chunk);
       });
 
       // Obtiene la respuesta completa de la iteración.
       const response = await stream.finalMessage();
-
       this.addUsage(context, response.usage);
 
       // Extrae las llamadas a herramientas generadas por el modelo.

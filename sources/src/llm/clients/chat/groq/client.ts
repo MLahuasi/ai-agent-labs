@@ -18,6 +18,10 @@ import {
   GroqToolCall,
   StreamToolCall,
 } from "./groq.types.js";
+import {
+  LlmUsageLimiterService,
+  LlmUsageTrackerService,
+} from "../../../../cost/index.js";
 
 /**
  * Cliente encargado de gestionar la comunicación con Groq.
@@ -32,6 +36,12 @@ export class GroqClient implements LlmClient {
   // Modelo utilizado para generar las respuestas.
   private readonly model: string;
 
+  /** Controla y limita la cantidad de llamadas realizadas a los proveedores LLM. */
+  private readonly usageLimiter: LlmUsageLimiterService;
+
+  /** Registra y acumula el consumo real de tokens generado por las llamadas al LLM. */
+  private readonly usageTracker: LlmUsageTrackerService;
+
   /**
    * Crea una nueva instancia del cliente de Groq.
    *
@@ -39,13 +49,42 @@ export class GroqClient implements LlmClient {
    * @param params.apiKey Clave de API utilizada para autenticar las solicitudes.
    * @param params.model Modelo de Groq utilizado para generar respuestas.
    */
-  constructor({ apiKey, model }: { apiKey: string; model: string }) {
+  constructor({
+    apiKey,
+    model,
+    usageLimiter,
+    usageTracker,
+  }: {
+    apiKey: string;
+    model: string;
+    usageLimiter: LlmUsageLimiterService;
+    usageTracker: LlmUsageTrackerService;
+  }) {
     this.client = new Groq({
       apiKey,
     });
 
     this.model = model;
+    this.usageLimiter = usageLimiter;
+    this.usageTracker = usageTracker;
     this.toolExecutor = new GroqToolExecutor();
+  }
+
+  /**
+   * Registra el consumo acumulado de una ejecución.
+   */
+  private recordUsage(
+    requests: number,
+    inputTokens: number,
+    outputTokens: number,
+  ): void {
+    this.usageTracker.record({
+      provider: "groq",
+      model: this.model,
+      requests,
+      inputTokens,
+      outputTokens,
+    });
   }
 
   /**
@@ -62,7 +101,6 @@ export class GroqClient implements LlmClient {
     tools?: ToolDefinition[],
   ) {
     const convertedTools = toGroqTools(tools);
-
     return this.client.chat.completions.create({
       model: this.model,
       messages,
@@ -94,7 +132,6 @@ export class GroqClient implements LlmClient {
     tools?: ToolDefinition[],
   ) {
     const convertedTools = toGroqTools(tools);
-
     return this.client.chat.completions.create({
       model: this.model,
       stream: true,
@@ -170,6 +207,8 @@ export class GroqClient implements LlmClient {
     text: string,
     context: ExecutionContext,
   ): AgentResponse {
+    // Registra toda la ejecución, incluidas las iteraciones con tools.
+    this.recordUsage(1, context.totalInputTokens, context.totalOutputTokens);
     return {
       text,
       totalInputTokens: context.totalInputTokens,
@@ -205,8 +244,9 @@ export class GroqClient implements LlmClient {
     maxTokens,
     maxTokensTools,
   }: AgentRequest): Promise<AgentResponse> {
-    // Ejecuta una única consulta cuando no existen herramientas.
     if (!tools?.length) {
+      // Una consulta directa consume una request.
+      this.usageLimiter.consume();
       const response = await this.create(
         maxTokens,
         buildConversation({
@@ -220,10 +260,14 @@ export class GroqClient implements LlmClient {
         response.choices[0]?.message?.content?.trim() ||
         "Groq no retornó contenido de texto en la respuesta";
 
+      const inputTokens = response.usage?.prompt_tokens ?? 0;
+      const outputTokens = response.usage?.completion_tokens ?? 0;
+      this.recordUsage(1, inputTokens, outputTokens);
+
       return {
         text,
-        totalInputTokens: response.usage?.prompt_tokens ?? 0,
-        totalOutputTokens: response.usage?.completion_tokens ?? 0,
+        totalInputTokens: inputTokens,
+        totalOutputTokens: outputTokens,
         toolsUsed: [],
         toolCallsLastTurn: 0,
       };
@@ -240,6 +284,11 @@ export class GroqClient implements LlmClient {
         "Se proporcionaron tools pero no un estado de ejecución.",
       );
     }
+    /**
+     * Consumir una solicitud inmediatamente antes
+     * de realizar la llamada real al proveedor.
+     */
+    this.usageLimiter.consume();
 
     // Inicializa el contexto compartido entre las iteraciones.
     const context = this.createExecutionContext(
@@ -346,13 +395,15 @@ export class GroqClient implements LlmClient {
     maxTokens,
     maxIterations,
     maxTokensTools,
+    onChunk,
   }: AgentRequest): Promise<AgentResponse> {
     // Ejecuta un único stream cuando no existen herramientas.
     if (!tools?.length) {
       let fullResponse = "";
-      let promptTokens = 0;
-      let completionTokens = 0;
-
+      let inputTokens = 0;
+      let outputTokens = 0;
+      // Una consulta directa consume una request.
+      this.usageLimiter.consume();
       const stream = await this.createStream(
         maxTokens,
         buildConversation({
@@ -364,17 +415,23 @@ export class GroqClient implements LlmClient {
 
       // Procesa los fragmentos generados durante el stream.
       for await (const chunk of stream) {
-        const content = chunk.choices[0]?.delta?.content ?? "";
-        fullResponse += content;
+        const text = chunk.choices[0]?.delta?.content ?? "";
+
+        if (text) {
+          fullResponse += text;
+          // Expone el fragmento generado durante la iteración.
+          onChunk?.(text);
+        }
 
         const usage = chunk.x_groq?.usage;
 
         if (usage) {
-          promptTokens = usage.prompt_tokens;
-
-          completionTokens = usage.completion_tokens;
+          inputTokens = usage.prompt_tokens;
+          outputTokens = usage.completion_tokens;
         }
       }
+
+      this.recordUsage(1, inputTokens, outputTokens);
 
       const text =
         fullResponse.trim() ||
@@ -382,8 +439,8 @@ export class GroqClient implements LlmClient {
 
       return {
         text,
-        totalInputTokens: promptTokens,
-        totalOutputTokens: completionTokens,
+        totalInputTokens: inputTokens,
+        totalOutputTokens: outputTokens,
         toolsUsed: [],
         toolCallsLastTurn: 0,
       };
@@ -400,6 +457,11 @@ export class GroqClient implements LlmClient {
         "Se proporcionaron tools pero no un estado de ejecución.",
       );
     }
+    /**
+     * Consumir una solicitud inmediatamente antes
+     * de realizar la llamada real al proveedor.
+     */
+    this.usageLimiter.consume();
 
     // Inicializa el contexto compartido entre las iteraciones.
     const context = this.createExecutionContext(
@@ -413,7 +475,7 @@ export class GroqClient implements LlmClient {
     for (let iteration = 0; iteration < maxIterations; iteration++) {
       console.log(`\nPensando... (iteración ${iteration + 1})`);
 
-      let streamedText = "";
+      let fullResponse = "";
 
       // Acumula las llamadas a herramientas de la iteración.
       const streamedToolCalls = new Map<number, StreamToolCall>();
@@ -436,10 +498,12 @@ export class GroqClient implements LlmClient {
       for await (const chunk of stream) {
         const delta = chunk.choices[0]?.delta;
 
-        const content = delta?.content ?? "";
+        const text = delta?.content ?? "";
 
-        if (content) {
-          streamedText += content;
+        if (text) {
+          fullResponse += text;
+          // Expone el fragmento al consumidor.
+          onChunk?.(text);
         }
 
         // Reconstruye las llamadas a herramientas recibidas por fragmentos.
@@ -475,7 +539,6 @@ export class GroqClient implements LlmClient {
       }
 
       context.totalInputTokens += promptTokens;
-
       context.totalOutputTokens += completionTokens;
 
       // Construye las llamadas completas respetando el orden recibido.
@@ -491,7 +554,7 @@ export class GroqClient implements LlmClient {
 
       // Retorna el texto cuando no existen llamadas a herramientas.
       if (toolCalls.length === 0) {
-        const text = streamedText.trim();
+        const text = fullResponse.trim();
 
         if (!text) {
           return this.buildResponse(
@@ -506,7 +569,7 @@ export class GroqClient implements LlmClient {
       // Agrega la salida del modelo al historial de la conversación.
       context.conversation.push({
         role: "assistant",
-        content: streamedText || null,
+        content: fullResponse || null,
         tool_calls: toolCalls.map((toolCall) => ({
           id: toolCall.id,
           type: "function" as const,

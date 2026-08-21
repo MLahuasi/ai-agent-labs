@@ -6,3 +6,5 @@ export * from "./05-chat-cli.js";
 export * from "./06-agentic-loop.js";
 export * from "./07-rag-agent.js";
 export * from "./agent/dev-assistant/init.js";
+export * from "./orchestrate-llms/orchestration.menu.js";
+export * from "./guardrails/guardrail.menu.js";

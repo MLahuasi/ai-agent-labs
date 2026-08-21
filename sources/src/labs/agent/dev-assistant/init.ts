@@ -1,5 +1,6 @@
 import { Conversation } from "../../../chat/conversation.js";
 import { config } from "../../../config/index.js";
+import { GuardrailsService } from "../../../security/guardrails.service.js";
 import { LlmClient } from "../../../types/app/index.js";
 import { AGENT_SYSTEM_PROMPT } from "./prompts/system-prompt.js";
 import {
@@ -10,7 +11,10 @@ import {
 } from "./use-cases/index.js";
 import { logSeparator, pauseExecution } from "./utils/index.js";
 
-export async function starAgent(llm: LlmClient): Promise<void> {
+export async function starAgent(
+  llm: LlmClient,
+  guardrails: GuardrailsService,
+): Promise<void> {
   console.log("");
   console.log("╔═══════════════╗");
   console.log("║     Agent     ║");
@@ -32,25 +36,25 @@ export async function starAgent(llm: LlmClient): Promise<void> {
 
   // Escenario 1
   logSeparator();
-  await exploreCodeUseCase(conversation);
+  await exploreCodeUseCase(conversation, guardrails);
   conversation.clear();
   await pauseExecution();
 
   // Escenario 2
   logSeparator();
-  await searchDocumentationUseCase(conversation);
+  await searchDocumentationUseCase(conversation, guardrails);
   conversation.clear();
   await pauseExecution();
 
   // Escenario 3
   logSeparator();
-  await multiToolTaskUseCase(conversation);
+  await multiToolTaskUseCase(conversation, guardrails);
   conversation.clear();
   await pauseExecution();
 
   // Escenario 4
   logSeparator();
-  await registerBugIssueUseCase(conversation);
+  await registerBugIssueUseCase(conversation, guardrails);
   conversation.clear();
   await pauseExecution();
 

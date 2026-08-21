@@ -1,6 +1,10 @@
 import OpenAI from "openai";
 import { config } from "../../../../config/index.js";
 import { EmbeddingClient } from "../../../../types/app/index.js";
+import {
+  LlmUsageLimiterService,
+  LlmUsageTrackerService,
+} from "../../../../cost/index.js";
 
 /**
  * Cliente encargado de gestionar la comunicación con OpenAI.
@@ -8,11 +12,22 @@ import { EmbeddingClient } from "../../../../types/app/index.js";
 export class OpenAiEmbeddingClient implements EmbeddingClient {
   // Cliente utilizado para realizar solicitudes a OpenAI.
   private readonly client: OpenAI;
+  /** Controla la cantidad de llamadas realizadas al servicio de embeddings. */
+  private readonly usageLimiter: LlmUsageLimiterService;
 
-  constructor() {
+  /** Registra el consumo real generado por los embeddings. */
+  private readonly usageTracker: LlmUsageTrackerService;
+
+  constructor(
+    usageLimiter: LlmUsageLimiterService,
+    usageTracker: LlmUsageTrackerService,
+  ) {
     this.client = new OpenAI({
       apiKey: config.openaiApiKey,
     });
+
+    this.usageLimiter = usageLimiter;
+    this.usageTracker = usageTracker;
   }
 
   /**
@@ -22,10 +37,25 @@ export class OpenAiEmbeddingClient implements EmbeddingClient {
    * @return Respuesta generada por el modelo de embeddings.
    */
   private async create(input: string | string[]) {
-    return await this.client.embeddings.create({
+    // Valida y registra la llamada inmediatamente antes
+    // de invocar al proveedor.
+    this.usageLimiter.consume();
+
+    const response = await this.client.embeddings.create({
       model: config.openaiEmbeddingModel,
       input,
     });
+
+    // Registra el consumo real de la llamada de embeddings.
+    this.usageTracker.record({
+      provider: "openai",
+      model: config.openaiEmbeddingModel,
+      requests: 1,
+      inputTokens: response.usage?.prompt_tokens ?? 0,
+      outputTokens: 0,
+    });
+
+    return response;
   }
 
   /**

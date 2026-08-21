@@ -18,6 +18,10 @@ import {
 } from "./internal/index.js";
 import { OpenAiToolExecutor } from "./openai-tool-executor.js";
 import { ExecutionContext, OpenAiToolCall } from "./openai.types.js";
+import {
+  LlmUsageLimiterService,
+  LlmUsageTrackerService,
+} from "../../../../cost/index.js";
 
 /**
  * Cliente encargado de gestionar la comunicación con OpenAI.
@@ -32,6 +36,12 @@ export class OpenAiClient implements LlmClient {
   // Modelo utilizado para generar las respuestas.
   private readonly model: string;
 
+  /** Controla y limita la cantidad de llamadas realizadas a los proveedores LLM. */
+  private readonly usageLimiter: LlmUsageLimiterService;
+
+  /** Registra y acumula el consumo real de tokens generado por las llamadas al LLM. */
+  private readonly usageTracker: LlmUsageTrackerService;
+
   /**
    * Crea una nueva instancia del cliente de OpenAI.
    *
@@ -39,12 +49,41 @@ export class OpenAiClient implements LlmClient {
    * @param params.apiKey Clave de API utilizada para autenticar las solicitudes.
    * @param params.model Modelo de OpenAI utilizado para generar respuestas.
    */
-  constructor({ apiKey, model }: { apiKey: string; model: string }) {
+  constructor({
+    apiKey,
+    model,
+    usageLimiter,
+    usageTracker,
+  }: {
+    apiKey: string;
+    model: string;
+    usageLimiter: LlmUsageLimiterService;
+    usageTracker: LlmUsageTrackerService;
+  }) {
     this.client = new OpenAI({
       apiKey,
     });
     this.model = model;
+    this.usageLimiter = usageLimiter;
+    this.usageTracker = usageTracker;
     this.toolExecutor = new OpenAiToolExecutor();
+  }
+
+  /**
+   * Registra el consumo acumulado de una ejecución.
+   */
+  private recordUsage(
+    requests: number,
+    inputTokens: number,
+    outputTokens: number,
+  ): void {
+    this.usageTracker.record({
+      provider: "openai",
+      model: this.model,
+      requests,
+      inputTokens,
+      outputTokens,
+    });
   }
 
   /**
@@ -180,6 +219,8 @@ export class OpenAiClient implements LlmClient {
     text: string,
     context: ExecutionContext,
   ): AgentResponse {
+    // Registra toda la ejecución, incluidas las iteraciones con tools.
+    this.recordUsage(1, context.totalInputTokens, context.totalOutputTokens);
     return {
       text,
       totalInputTokens: context.totalInputTokens,
@@ -217,6 +258,8 @@ export class OpenAiClient implements LlmClient {
   }: AgentRequest): Promise<AgentResponse> {
     // Ejecuta una única consulta cuando no existen herramientas.
     if (!tools?.length) {
+      // Una consulta directa consume una request.
+      this.usageLimiter.consume();
       const response = await this.create(
         prompt,
         maxTokens,
@@ -226,10 +269,15 @@ export class OpenAiClient implements LlmClient {
 
       const text = response.output_text;
 
+      const inputTokens = response.usage?.input_tokens ?? 0;
+      const outputTokens = response.usage?.output_tokens ?? 0;
+
+      this.recordUsage(1, inputTokens, outputTokens);
+
       return {
         text: text ?? "OpenAI no retornó contenido de texto en la respuesta",
-        totalInputTokens: response.usage?.input_tokens ?? 0,
-        totalOutputTokens: response.usage?.output_tokens ?? 0,
+        totalInputTokens: inputTokens,
+        totalOutputTokens: outputTokens,
         toolsUsed: [],
         toolCallsLastTurn: 0,
       };
@@ -246,6 +294,11 @@ export class OpenAiClient implements LlmClient {
         "Se proporcionaron tools pero no un estado de ejecución.",
       );
     }
+    /**
+     * Consumir una solicitud inmediatamente antes
+     * de realizar la llamada real al proveedor.
+     */
+    this.usageLimiter.consume();
 
     // Inicializa el contexto compartido entre las iteraciones.
     const context = this.createExecutionContext(prompt, messages, toolState);
@@ -268,6 +321,7 @@ export class OpenAiClient implements LlmClient {
         availableTools,
       );
 
+      // La llamada al proveedor se completó correctamente.
       this.addUsage(context, response.usage);
 
       // Extrae las llamadas a herramientas generadas por el modelo.
@@ -342,11 +396,13 @@ export class OpenAiClient implements LlmClient {
     maxTokens,
     maxIterations,
     maxTokensTools,
+    onChunk,
   }: AgentRequest): Promise<AgentResponse> {
     // Ejecuta un único stream cuando no existen herramientas.
     if (!tools?.length) {
       let fullResponse = "";
-
+      // Una consulta directa consume una request.
+      this.usageLimiter.consume();
       const stream = await this.createStream(
         prompt,
         maxTokens,
@@ -357,14 +413,22 @@ export class OpenAiClient implements LlmClient {
       // Acumula cada fragmento de texto recibido.
       stream.on("response.output_text.delta", (event) => {
         fullResponse += event.delta;
+
+        // Entrega el fragmento al consumidor del cliente.
+        onChunk?.(event.delta);
       });
 
       const finalResponse = await stream.finalResponse();
 
+      const inputTokens = finalResponse.usage?.input_tokens ?? 0;
+      const outputTokens = finalResponse.usage?.output_tokens ?? 0;
+
+      this.recordUsage(1, inputTokens, outputTokens);
+
       return {
         text: fullResponse,
-        totalInputTokens: finalResponse.usage?.input_tokens ?? 0,
-        totalOutputTokens: finalResponse.usage?.output_tokens ?? 0,
+        totalInputTokens: inputTokens,
+        totalOutputTokens: outputTokens,
         toolsUsed: [],
         toolCallsLastTurn: 0,
       };
@@ -381,6 +445,12 @@ export class OpenAiClient implements LlmClient {
         "Se proporcionaron tools pero no un estado de ejecución.",
       );
     }
+
+    /**
+     * Consumir una solicitud inmediatamente antes
+     * de realizar la llamada real al proveedor.
+     */
+    this.usageLimiter.consume();
 
     // Inicializa el contexto compartido entre las iteraciones.
     const context = this.createExecutionContext(prompt, messages, toolState);
@@ -407,11 +477,15 @@ export class OpenAiClient implements LlmClient {
 
       stream.on("response.output_text.delta", (event) => {
         streamedText += event.delta;
+
+        // Expone cada fragmento recibido.
+        onChunk?.(event.delta);
       });
 
       // Obtiene la respuesta completa de la iteración.
       const response = await stream.finalResponse();
 
+      // El stream corresponde a una llamada real al proveedor.
       this.addUsage(context, response.usage);
 
       // Extrae las llamadas a herramientas generadas por el modelo.

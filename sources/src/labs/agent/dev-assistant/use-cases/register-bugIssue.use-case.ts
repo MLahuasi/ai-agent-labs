@@ -1,4 +1,6 @@
 import { Conversation } from "../../../../chat/index.js";
+import { hasAvailableLlmRequests } from "../../../../cost/index.js";
+import { GuardrailsService } from "../../../../security/guardrails.service.js";
 import { executeTool, TOOL_DEFINITIONS } from "../tools/index.js";
 import { printScenarioDetails, printStats } from "../utils/index.js";
 
@@ -16,7 +18,13 @@ import { printScenarioDetails, printStats } from "../utils/index.js";
  */
 export async function registerBugIssueUseCase(
   conversation: Conversation,
+  guardrails: GuardrailsService,
 ): Promise<void> {
+  // Verificar que exista capacidad suficiente antes
+  // de iniciar la ejecución del laboratorio.
+  if (!hasAvailableLlmRequests(2)) {
+    return;
+  }
   // Muestra en consola la información descriptiva del escenario que se ejecutará.
   printScenarioDetails(
     4,
@@ -37,36 +45,43 @@ export async function registerBugIssueUseCase(
     "en lugar de crear la base de datos en una ubicación inesperada. " +
     "Etiquetas: bug, rag. Prioridad: high.";
 
-  console.log(`Usuario: ${question}\n`);
-  console.log("Robotitus: ");
+  // Validar el prompt antes de enviarlo al LLM.
+  const guardrailResult = guardrails.checkInput(question);
 
-  // Envía la consulta al agente junto con las definiciones de las herramientas.
-  // `executeTool` será invocado cuando el modelo decida ejecutar `create_issue`.
-  //
-  // Este escenario permite comprobar que el agente puede realizar una acción
-  // con efecto de lado y posteriormente comunicar al usuario el resultado
-  // de la operación realizada.
-  const { text } = await conversation.sendChat(
-    question,
-    TOOL_DEFINITIONS,
-    executeTool,
-  );
+  if (!guardrailResult.safe) {
+    guardrails.printResult("", question, guardrailResult);
+  } else {
+    console.log(`Usuario: ${guardrailResult.sanitized}\n`);
+    console.log("Robotitus: ");
 
-  // Imprime la respuesta final generada por el agente después de ejecutar
-  // las herramientas necesarias para completar la solicitud.
-  process.stdout.write(text);
-  process.stdout.write("\n\n");
+    // Envía la consulta al agente junto con las definiciones de las herramientas.
+    // `executeTool` será invocado cuando el modelo decida ejecutar `create_issue`.
+    //
+    // Este escenario permite comprobar que el agente puede realizar una acción
+    // con efecto de lado y posteriormente comunicar al usuario el resultado
+    // de la operación realizada.
+    const { text } = await conversation.sendChat(
+      guardrailResult.sanitized,
+      TOOL_DEFINITIONS,
+      executeTool,
+    );
 
-  // Obtiene las herramientas utilizadas durante el último turno para verificar
-  // que el agente haya recurrido a `create_issue` para registrar el bug.
-  const toolsUsed = conversation.getToolsUsedLastTurn();
+    // Imprime la respuesta final generada por el agente después de ejecutar
+    // las herramientas necesarias para completar la solicitud.
+    process.stdout.write(text);
+    process.stdout.write("\n\n");
 
-  if (toolsUsed.length > 0) {
-    // Muestra las herramientas utilizadas durante la ejecución del escenario.
-    console.log(`\n🔧 Tools usadas: ${toolsUsed.join(", ")}`);
+    // Obtiene las herramientas utilizadas durante el último turno para verificar
+    // que el agente haya recurrido a `create_issue` para registrar el bug.
+    const toolsUsed = conversation.getToolsUsedLastTurn();
+
+    if (toolsUsed.length > 0) {
+      // Muestra las herramientas utilizadas durante la ejecución del escenario.
+      console.log(`\n🔧 Tools usadas: ${toolsUsed.join(", ")}`);
+    }
+
+    // Muestra las métricas acumuladas de la conversación y de la ejecución
+    // del escenario.
+    printStats(conversation);
   }
-
-  // Muestra las métricas acumuladas de la conversación y de la ejecución
-  // del escenario.
-  printStats(conversation);
 }

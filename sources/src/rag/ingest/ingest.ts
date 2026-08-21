@@ -1,5 +1,5 @@
 import config from "../../config/env.settings.js";
-import { OpenAiEmbeddingClient } from "../../llm/clients/embedding/index.js";
+import { createOpenAiEmbeddingClient } from "../../llm/llm.instances.js";
 import { FileSystemTools } from "../../utils/files/file-systems.tools.js";
 import {
   ChunkingFileExtension,
@@ -79,7 +79,7 @@ export async function runIngest(
   /**
    * Crea el cliente encargado de comunicarse con OpenAI.
    */
-  const embeddingClient = new OpenAiEmbeddingClient();
+  const embeddingClient = createOpenAiEmbeddingClient();
 
   /**
    * Genera un embedding por cada texto.

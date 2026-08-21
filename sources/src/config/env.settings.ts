@@ -218,6 +218,19 @@ export class AppConfigService {
       max_iterations: this.getIntegerEnvVar("MAX_ITERATIONS", "10"),
       max_tool_calls: this.getIntegerEnvVar("MAX_TOOL_CALLS", "8"),
       max_tokens_tools: this.getIntegerEnvVar("MAX_TOKENS_TOOLS", "4096"),
+      /**
+       * Guardrails
+       */
+      guardrails: {
+        maxInputLength: this.getIntegerEnvVar(
+          "GUARDRAIL_MAX_INPUT_LENGTH",
+          "8000",
+        ),
+      },
+      llm_usage: {
+        maxRequest: this.getIntegerEnvVar("LLM_MAX_REQUESTS", "20"),
+        windowMs: this.getIntegerEnvVar("LLM_USAGE_WINDOW_MS", "600000"),
+      },
     };
   }
 

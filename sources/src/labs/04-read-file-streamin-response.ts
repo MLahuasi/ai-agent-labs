@@ -1,6 +1,6 @@
-import { config } from "../config/index.js";
-import { FileReviewer } from "../files/index.js";
+import { codeReviewUseCase } from "../code-review/index.js";
 import { CODE_REVIEWER_PROMPT } from "../llm/prompts/index.js";
+import { GuardrailsService } from "../security/guardrails.service.js";
 import { LlmClient } from "../types/app/index.js";
 
 const FILE_PATH = "./src/labs/assets/rest-api.service.cs";
@@ -11,23 +11,24 @@ const FILE_PATH = "./src/labs/assets/rest-api.service.cs";
  * @param llm Cliente LLM utilizado para realizar la revisión.
  * @return No retorna ningún valor.
  */
-export async function codeReview(llm: LlmClient): Promise<void> {
+export async function codeReview(
+  llm: LlmClient,
+  guardrails: GuardrailsService,
+): Promise<void> {
   const question = "Analiza este código fuente";
 
-  const reviewer = new FileReviewer(
+  const result = await codeReviewUseCase(
     llm,
-    question,
     CODE_REVIEWER_PROMPT,
-    {
-      maxTokens: config.max_tokens,
-      maxTokensTools: config.max_tokens_tools,
-      maxIterations: config.max_iterations,
-    },
-    {
-      maxChars: 50_000,
-      rejectUnsupportedExtensions: true,
-    },
+    question,
+    FILE_PATH,
+    guardrails,
   );
+
+  if (!result.data) {
+    console.log(result.message);
+    return;
+  }
 
   console.log("╔══════════════════════════╗");
   console.log("║       Code Review        ║");
@@ -37,32 +38,32 @@ export async function codeReview(llm: LlmClient): Promise<void> {
 
   console.log("✅ Demo 1: Revisando código CON streaming");
   console.log("");
-  console.log(` Pregunta: ${question}`);
+  console.log(` Pregunta: ${result.data.question}`);
   console.log(" Respuesta:");
 
-  const result = await reviewer.reviewFile(FILE_PATH, "stream");
+  process.stdout.write(result.data.review);
 
   console.log("");
   console.log("-".repeat(50));
-  console.log(` Archivo revisado: ${result.fileName}`);
-  console.log(` Ruta: ${result.filePath}`);
-  console.log(` Líneas: ${result.totalLines}`);
-  console.log(` Caracteres: ${result.totalCharacters}`);
-  console.log(` Caracteres revisados: ${result.reviewedCharacters}`);
-  console.log(` Contenido truncado: ${result.truncated ? "Sí" : "No"}`);
+  console.log(` Archivo revisado: ${result.data.fileName}`);
+  console.log(` Ruta: ${result.data.filePath}`);
+  console.log(` Líneas: ${result.data.totalLines}`);
+  console.log(` Caracteres: ${result.data.totalCharacters}`);
+  console.log(` Caracteres revisados: ${result.data.reviewedCharacters}`);
+  console.log(` Contenido truncado: ${result.data.truncated ? "Sí" : "No"}`);
 
-  if (result.warnings.length > 0) {
+  if (result.data.warnings.length > 0) {
     console.log("");
     console.log(" Advertencias:");
 
-    for (const warning of result.warnings) {
+    for (const warning of result.data.warnings) {
       console.log(` ⚠️ ${warning}`);
     }
   }
 
   console.log("");
-  console.log(` Tokens Entrada: ${result.totalInputTokens}`);
-  console.log(` Tokens Salida: ${result.totalOutputTokens}`);
+  console.log(` Tokens Entrada: ${result.data.totalInputTokens}`);
+  console.log(` Tokens Salida: ${result.data.totalOutputTokens}`);
   console.log("-".repeat(50));
   console.log("");
 }

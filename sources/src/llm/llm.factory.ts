@@ -1,14 +1,12 @@
 import { config } from "../config/index.js";
-import { LlmClient } from "../types/app/index.js";
-
 import {
-  AnthropicClient,
-  OpenAiClient,
-  GeminiClient,
-  GroqClient,
-  OllamaClient,
-} from "./clients/chat/index.js";
-import { ollamaSystemPrompt } from "./prompts/index.js";
+  createAnthropicClient,
+  createGeminiClient,
+  createGroqClient,
+  createOllamaClient,
+  createOpenAiClient,
+} from "./llm.instances.js";
+import { LlmClient } from "../types/app/index.js";
 
 /**
  * Crea el cliente LLM configurado para el proveedor seleccionado.
@@ -26,51 +24,31 @@ export function createLlmProvider(): {
   switch (config.provider) {
     case "anthropic":
       return {
-        client: new AnthropicClient({
-          apiKey: config.anthropicApiKey,
-          model: config.anthropicModel,
-        }),
+        client: createAnthropicClient(),
         model: config.anthropicModel,
       };
 
     case "openai":
       return {
-        client: new OpenAiClient({
-          apiKey: config.openaiApiKey,
-          model: config.openaiModel,
-        }),
+        client: createOpenAiClient(),
         model: config.openaiModel,
       };
 
     case "gemini":
       return {
-        client: new GeminiClient({
-          apiKey: config.geminiApiKey,
-          model: config.geminiModel,
-        }),
+        client: createGeminiClient(),
         model: config.geminiModel,
       };
 
     case "groq":
       return {
-        client: new GroqClient({
-          apiKey: config.groqApiKey,
-          model: config.groqModel,
-        }),
+        client: createGroqClient(),
         model: config.groqModel,
       };
 
     case "ollama":
       return {
-        client: new OllamaClient({
-          host: config.ollamaHost,
-          model: config.ollamaModel,
-          systemPrompt: ollamaSystemPrompt,
-          think: false,
-          keepAlive: "10m",
-          temperature: 0,
-          numCtx: 4096,
-        }),
+        client: createOllamaClient(),
         model: config.ollamaModel,
       };
   }

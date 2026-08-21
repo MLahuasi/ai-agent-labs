@@ -1,104 +1,184 @@
-# 🔍 ANÁLISIS DE ARCHIVOS CON UN LLM
+# 🔍 Análisis de Archivos con un LLM
 
-El análisis de Archivos con un **LLM (Large Language Model)** consiste en leer su contenido, preparar una solicitud con información relevante y enviarla al modelo para realizar una tarea definida mediante un `System Prompt`.
+El análisis de archivos con un **LLM (Large Language Model)** consiste en leer contenido externo, validarlo, incorporarlo al contexto del modelo y ejecutar una tarea definida mediante un `System Prompt`.
 
-En este laboratorio, el modelo actúa como revisor de código. Sin embargo, la misma funcionalidad puede utilizarse para explicar, documentar, resumir o analizar un archivo cambiando las instrucciones del sistema.
+El modelo actúa como **revisor de código**. Sin embargo, el mismo flujo puede utilizarse para:
+
+- 🔍 Analizar contenido.
+- 📝 Generar documentación.
+- 📚 Explicar código.
+- ✂️ Resumir archivos.
+- 🐛 Detectar posibles problemas.
+- 🔐 Identificar riesgos de seguridad.
+
+La idea principal es:
+
+```text
+📄 Archivo
+    ↓
+✅ Validación
+    ↓
+📖 Lectura
+    ↓
+📏 Control de tamaño
+    ↓
+🧩 Construcción del contexto
+    ↓
+🤖 LLM
+    ↓
+💬 Resultado
+```
+
+Este patrón es especialmente importante porque representa una primera forma de **incorporar conocimiento externo al contexto del modelo**, concepto que posteriormente será extendido mediante `RAG`.
 
 ---
 
-## 🧩 Funcionalidad principal
+# 🎯 Objetivo
 
-La clase `CodeReviewer` administra el proceso completo:
+El flujo debe ser capaz de:
 
-1. Recibe la ruta del archivo.
-2. Verifica que exista y corresponda a un archivo.
-3. Valida su extensión.
-4. Lee el contenido como texto.
-5. Comprueba que no esté vacío.
-6. Limita el contenido cuando supera el tamaño configurado.
-7. Construye el prompt con los metadatos y el contenido.
-8. Envía la solicitud al cliente LLM.
-9. Retorna la respuesta, las advertencias y las métricas.
+- 📂 Recibir un archivo.
+- ✅ Validar que pueda ser procesado.
+- 📖 Leer su contenido.
+- 📏 Controlar cuánto contenido se envía al modelo.
+- 🧠 Aplicar instrucciones mediante un `System Prompt`.
+- 🧩 Construir el contexto para el LLM.
+- 📊 Registrar métricas de uso.
+- ⚠️ Informar advertencias cuando el contenido sea truncado.
 
 ---
 
-## 🔄 Flujo del proceso
+# 🏗️ Arquitectura
+
+La solución puede dividirse en cuatro responsabilidades:
+
+```mermaid
+flowchart LR
+
+    FILE["📄 Archivo"]
+
+    subgraph APP["🧩 Aplicación"]
+        VALIDATION["✅ Validación"]
+        READER["📖 Lectura"]
+        CONTEXT["🧠 Construcción<br/>del contexto"]
+        CLIENT["🔌 Cliente LLM"]
+    end
+
+    MODEL["🤖 Modelo LLM"]
+
+    RESULT["📦 Resultado"]
+
+    FILE --> VALIDATION
+    VALIDATION --> READER
+    READER --> CONTEXT
+    CONTEXT --> CLIENT
+    CLIENT --> MODEL
+    MODEL --> CLIENT
+    CLIENT --> RESULT
+
+    classDef file fill:#1565C0,color:#ffffff,stroke:#0D47A1,stroke-width:2px;
+    classDef app fill:#2E7D32,color:#ffffff,stroke:#1B5E20,stroke-width:2px;
+    classDef client fill:#EF6C00,color:#ffffff,stroke:#E65100,stroke-width:2px;
+    classDef model fill:#7B1FA2,color:#ffffff,stroke:#4A148C,stroke-width:2px;
+    classDef result fill:#00897B,color:#ffffff,stroke:#00695C,stroke-width:2px;
+
+    class FILE file;
+    class VALIDATION,READER,CONTEXT app;
+    class CLIENT client;
+    class MODEL model;
+    class RESULT result;
+```
+
+Esta separación permite mantener desacopladas:
+
+- la gestión del archivo;
+- la construcción del contexto;
+- la comunicación con el proveedor LLM.
+
+Esto será especialmente útil al incorporar posteriormente mecanismos de recuperación como `RAG`.
+
+---
+
+# 🔄 Flujo del proceso
 
 ```mermaid
 flowchart TD
 
-    A["Recibir ruta del archivo"]
+    A["📂 Recibir ruta del archivo"]
 
-    B["Resolver ruta absoluta"]
+    B["🔎 Resolver ruta absoluta"]
 
-    C{"¿Existe y es un archivo?"}
+    C{"✅ ¿Existe<br/>y es un archivo?"}
 
-    D["Obtener nombre y extensión"]
+    D["📄 Obtener nombre<br/>y extensión"]
 
-    E{"¿La extensión está permitida?"}
+    E{"✅ ¿Extensión<br/>permitida?"}
 
-    F["Leer contenido"]
+    F["📖 Leer contenido"]
 
-    G{"¿El archivo tiene contenido?"}
+    G{"📝 ¿Tiene<br/>contenido?"}
 
-    H["Calcular líneas y caracteres"]
+    H["📊 Calcular líneas<br/>y caracteres"]
 
-    I{"¿Supera el límite?"}
+    I{"📏 ¿Supera<br/>maxChars?"}
 
-    J["Usar contenido completo"]
+    J["✅ Usar contenido completo"]
 
-    K["Truncar contenido<br/>y generar advertencia"]
+    K["✂️ Truncar contenido<br/>⚠️ generar advertencia"]
 
-    L["Construir prompt<br/>con metadatos y contenido"]
+    L["🧩 Construir contexto<br/>metadatos + contenido"]
 
-    M["Enviar System Prompt y prompt<br/>al cliente LLM"]
+    M["🧠 Incorporar System Prompt"]
 
-    N{"Modo de respuesta"}
+    N["🔌 Enviar al cliente LLM"]
 
-    O["Esperar respuesta completa"]
+    O{"📡 Modo<br/>de respuesta"}
 
-    P["Recibir respuesta mediante streaming"]
+    P["📦 Recibir respuesta completa"]
 
-    Q["Construir resultado<br/>con revisión y métricas"]
+    Q["⚡ Recibir chunks"]
 
-    R["Retornar resultado"]
+    R["📊 Construir resultado<br/>respuesta + métricas"]
 
-    S["Generar error descriptivo"]
+    S["✅ Retornar resultado"]
+
+    ERR["❌ Generar error descriptivo"]
 
     A --> B
     B --> C
 
-    C -->|Sí| D
-    C -->|No| S
+    C -->|"Sí"| D
+    C -->|"No"| ERR
 
     D --> E
 
-    E -->|Sí| F
-    E -->|No| S
+    E -->|"Sí"| F
+    E -->|"No"| ERR
 
     F --> G
 
-    G -->|Sí| H
-    G -->|No| S
+    G -->|"Sí"| H
+    G -->|"No"| ERR
 
     H --> I
 
-    I -->|No| J
-    I -->|Sí| K
+    I -->|"No"| J
+    I -->|"Sí"| K
 
     J --> L
     K --> L
 
     L --> M
     M --> N
+    N --> O
 
-    N -->|Completa| O
-    N -->|Streaming| P
+    O -->|"Completa"| P
+    O -->|"Streaming"| Q
 
-    O --> Q
-    P --> Q
-
+    P --> R
     Q --> R
+
+    R --> S
 
     classDef validation fill:#1565C0,color:#ffffff,stroke:#0D47A1,stroke-width:2px;
     classDef preparation fill:#EF6C00,color:#ffffff,stroke:#E65100,stroke-width:2px;
@@ -108,75 +188,182 @@ flowchart TD
     classDef error fill:#C62828,color:#ffffff,stroke:#B71C1C,stroke-width:2px;
 
     class A,B,D,F validation;
-    class H,J,K,L preparation;
-    class M,O,P llm;
-    class Q,R result;
-    class C,E,G,I,N decision;
-    class S error;
+    class H,J,K,L,M preparation;
+    class N,P,Q llm;
+    class R,S result;
+    class C,E,G,I,O decision;
+    class ERR error;
 ```
 
-🔵 **Azul** → Validación y lectura del archivo.</br>
-🟠 **Naranja** → Preparación del contenido.</br>
-🟣 **Morado** → Comunicación con el LLM.</br>
-🟢 **Verde** → Construcción del resultado.</br>
-🟡 **Amarillo** → Decisiones del flujo.</br>
-🔴 **Rojo** → Errores que detienen el proceso.</br>
+🔵 **Azul** → Validación y lectura. <br />
+🟠 **Naranja** → Preparación del contexto. <br />
+🟣 **Morado** → Comunicación con el LLM. <br />
+🟢 **Verde** → Construcción del resultado. <br />
+🟡 **Amarillo** → Decisiones del flujo. <br />
+🔴 **Rojo** → Errores que detienen el procesamiento. <br />
 
 ---
 
-## ✅ Validaciones
+# ✅ Validación del archivo
 
-Antes de llamar al LLM, la clase verifica:
+Antes de consumir recursos del LLM, la aplicación valida el archivo.
 
-- Que la ruta exista.
-- Que la ruta corresponda a un archivo.
-- Que la extensión esté permitida.
-- Que el archivo contenga texto.
-- Que el límite máximo de caracteres sea válido.
+Se comprueba:
 
-Una validación fallida detiene el flujo antes de enviar contenido al modelo, evitando solicitudes innecesarias y consumo de tokens.
+- 📂 Que la ruta exista.
+- 📄 Que corresponda a un archivo.
+- ✅ Que la extensión esté permitida.
+- 📝 Que contenga texto.
+- 📏 Que el límite máximo de caracteres sea válido.
+
+```text
+Archivo
+   ↓
+Validaciones
+   ↓
+¿Válido?
+ ↙     ↘
+No      Sí
+↓        ↓
+Error   Continuar
+```
+
+Una validación fallida detiene el flujo antes de realizar una solicitud al modelo.
+
+Esto evita procesamiento innecesario y consumo de tokens.
 
 ---
 
-## 📏 Control del contenido
+# 📖 Lectura del contenido
 
-La propiedad `maxChars` establece la cantidad máxima de caracteres que pueden enviarse al modelo.
+Una vez validado, el archivo se lee como texto.
 
-Cuando el archivo supera este límite:
+La aplicación obtiene también metadatos que posteriormente pueden incorporarse al contexto:
 
-- Se utiliza únicamente la primera parte del contenido.
-- Se registra que el archivo fue truncado.
-- Se agrega una advertencia al resultado.
-- Se conserva el tamaño original para mostrarlo en los metadatos.
+```text
+📄 Nombre
+🔤 Extensión
+📏 Caracteres
+📑 Número de líneas
+📝 Contenido
+```
 
-Este mecanismo reduce el riesgo de superar la ventana de contexto del modelo.
+Por ejemplo:
+
+```text
+Archivo: rest-api.service.cs
+Extensión: .cs
+Líneas: 354
+Caracteres: 9699
+```
+
+Estos datos ayudan al modelo a interpretar correctamente el contenido recibido.
 
 ---
 
-## 🧠 Construcción de la solicitud
+# 📏 Control del tamaño del contenido
 
-La solicitud combina dos elementos.
+Los modelos tienen una cantidad limitada de contexto que pueden procesar.
 
-### System Prompt
+La propiedad:
 
-Define la tarea que debe realizar el modelo:
+```text
+maxChars
+```
 
-- Revisar calidad de código.
-- Buscar errores.
-- Identificar riesgos de seguridad.
-- Proponer refactorizaciones.
-- Explicar el contenido.
-- Generar documentación.
+establece la cantidad máxima de caracteres que la implementación enviará al modelo.
 
-### Prompt del archivo
+## ✅ Archivo dentro del límite
 
-Contiene:
+```text
+Archivo
+   ↓
+9699 caracteres
+   ↓
+maxChars = 15000
+   ↓
+✅ Contenido completo
+```
 
-- Nombre del archivo.
-- Extensión.
-- Número de líneas.
-- Aviso de truncamiento, cuando aplica.
-- Contenido dentro de un bloque Markdown.
+Todo el contenido se incorpora al contexto.
+
+---
+
+## ✂️ Archivo superior al límite
+
+Cuando el contenido excede `maxChars`:
+
+- se utiliza únicamente la primera parte;
+- se registra que el archivo fue truncado;
+- se genera una advertencia;
+- se conserva el tamaño original en los metadatos.
+
+```text
+Archivo grande
+     ↓
+¿Supera maxChars?
+     ↓
+    Sí
+     ↓
+✂️ Truncamiento
+     ↓
+Contenido parcial
+```
+
+Este mecanismo reduce el riesgo de utilizar excesivamente la ventana de contexto del modelo.
+
+> ⚠️ El truncamiento es una estrategia simple. Posteriormente, RAG permitirá seleccionar fragmentos relevantes en lugar de limitarse a enviar la primera parte del archivo.
+
+---
+
+# 🧠 Construcción del contexto
+
+Una vez obtenido el contenido, la aplicación debe preparar la información que recibirá el modelo.
+
+La solicitud combina principalmente:
+
+```text
+🧠 System Prompt
+        +
+📄 Metadatos del archivo
+        +
+📝 Contenido
+        ↓
+   🧩 Contexto
+        ↓
+      🤖 LLM
+```
+
+---
+
+## 🧠 System Prompt
+
+El `System Prompt` define **qué debe hacer el modelo con el contenido**.
+
+Por ejemplo:
+
+- revisar calidad de código;
+- buscar errores;
+- identificar problemas de seguridad;
+- proponer refactorizaciones;
+- explicar el archivo;
+- generar documentación;
+- resumir su contenido.
+
+Por tanto:
+
+```text
+Archivo = información
+System Prompt = instrucciones
+```
+
+El comportamiento del análisis depende principalmente del `System Prompt`, no del nombre de la clase ni de la extensión del archivo.
+
+---
+
+## 📄 Prompt del archivo
+
+El prompt incorpora los metadatos y el contenido procesado.
 
 Ejemplo:
 
@@ -192,37 +379,114 @@ Líneas del archivo original: 354
 ```
 ````
 
-El tipo de análisis depende del `System Prompt`, no del nombre de la clase ni de la extensión del archivo.
+Conceptualmente:
+
+```text
+Metadatos
+    +
+Contenido
+    ↓
+Contexto del archivo
+```
 
 ---
 
-## 📡 Modos de respuesta
+# 🔌 Procesamiento con el LLM
 
-La clase permite dos modos de generación:
+Después de construir el contexto, la aplicación lo envía al cliente LLM.
 
-### Respuesta completa
+```mermaid
+flowchart LR
 
-El cliente espera hasta recibir todo el texto generado.
+    SYSTEM["🧠 System Prompt"]
+    FILE["📄 Contenido del archivo"]
 
-```text
-Solicitud → Respuesta completa → Resultado
+    CONTEXT["🧩 Contexto"]
+
+    CLIENT["🔌 Cliente LLM"]
+
+    MODEL["🤖 Modelo"]
+
+    RESPONSE["💬 Análisis"]
+
+    SYSTEM --> CONTEXT
+    FILE --> CONTEXT
+
+    CONTEXT --> CLIENT
+    CLIENT --> MODEL
+
+    MODEL --> RESPONSE
+
+    classDef system fill:#1565C0,color:#ffffff,stroke:#0D47A1,stroke-width:2px;
+    classDef file fill:#2E7D32,color:#ffffff,stroke:#1B5E20,stroke-width:2px;
+    classDef context fill:#EF6C00,color:#ffffff,stroke:#E65100,stroke-width:2px;
+    classDef model fill:#7B1FA2,color:#ffffff,stroke:#4A148C,stroke-width:2px;
+    classDef response fill:#00897B,color:#ffffff,stroke:#00695C,stroke-width:2px;
+
+    class SYSTEM system;
+    class FILE file;
+    class CONTEXT context;
+    class CLIENT,MODEL model;
+    class RESPONSE response;
 ```
 
-### Streaming
+El cliente LLM se encarga de adaptar la solicitud al proveedor configurado y normalizar posteriormente la respuesta.
 
-El cliente muestra los fragmentos a medida que el modelo genera la respuesta.
+---
+
+# 📡 Modos de respuesta
+
+La implementación permite recibir la generación de dos formas.
+
+## 📦 Respuesta completa
+
+La aplicación espera hasta que el modelo finalice la generación.
 
 ```text
-Solicitud → Fragmentos → Respuesta acumulada → Resultado
+Solicitud
+    ↓
+   LLM
+    ↓
+Respuesta completa
+    ↓
+ Resultado
+```
+
+---
+
+## ⚡ Streaming
+
+El modelo envía fragmentos mientras genera el contenido.
+
+```text
+Solicitud
+    ↓
+   LLM
+    ↓
+ chunk
+    ↓
+ chunk
+    ↓
+ chunk
+    ↓
+Respuesta completa
+```
+
+Conceptualmente:
+
+```text
+chunk + chunk + chunk
+         ↓
+Respuesta acumulada
 ```
 
 El laboratorio utiliza el modo `stream`.
 
 ---
 
-## 📦 Resultado
+# 📦 Resultado
 
-El método `reviewFile()` retorna un objeto `CodeReviewResult` con:
+El método `reviewFile()` retorna un objeto `CodeReviewResult`.
 
 | Propiedad            | Descripción                          |
 | -------------------- | ------------------------------------ |
@@ -238,42 +502,58 @@ El método `reviewFile()` retorna un objeto `CodeReviewResult` con:
 | `totalInputTokens`   | Tokens de entrada                    |
 | `totalOutputTokens`  | Tokens de salida                     |
 
----
+El resultado mantiene separados:
 
-## ⚠️ Limitaciones
-
-La implementación está diseñada para un laboratorio sencillo:
-
-- Analiza un archivo por solicitud.
-- No incorpora el contexto de otros archivos.
-- Trunca por caracteres y no por estructuras de código.
-- No reemplaza compiladores, linters ni analizadores estáticos.
-- No modifica automáticamente el archivo.
-- La calidad del resultado depende del modelo y del `System Prompt`.
+```text
+📄 Metadatos
+⚠️ Advertencias
+💬 Respuesta del modelo
+📊 Métricas
+```
 
 ---
 
-## 🧪 Laboratorio
+# [🧪 Laboratorio](../../sources/src/labs/04-read-file-streamin-response.ts)
 
-El laboratorio revisa un archivo C# preparado con problemas intencionales:
+El laboratorio analiza un archivo C# preparado con problemas intencionales:
 
 ```text
 ./src/labs/assets/rest-api.service.cs
 ```
 
-La respuesta se genera mediante streaming y después se muestran los metadatos y las métricas.
+El análisis utiliza:
 
-### 📋 Resultado de la ejecución
+```text
+📄 Archivo C#
+      +
+🧠 System Prompt de Code Review
+      +
+📡 Streaming
+      ↓
+🤖 LLM
+```
+
+Después de finalizar la generación se muestran los metadatos y las métricas.
+
+---
+
+## 📋 Resultado de la ejecución
+
+<details>
+
+<summary>▶️ Ver ejecución completa</summary>
 
 ````text
 ╔══════════════════════════╗
 ║      Code Reviewer       ║
 ╚══════════════════════════╝
- Archivo: ./src/labs/assets/rest-api.service.cs
+
+Archivo: ./src/labs/assets/rest-api.service.cs
 
 ✅ Demo 1: Revisando código CON streaming
 
- Respuesta:
+Respuesta:
+
 Resumen:
 El código presenta problemas significativos en la consistencia del manejo de errores, la gestión de la autenticación y la serialización JSON. Necesita una refactorización para mejorar su mantenibilidad y fiabilidad.
 
@@ -327,32 +607,90 @@ Contenido truncado: No
 
 Tokens Entrada: 2626
 Tokens Salida: 563
-
----
 ````
 
----
-
-## 🔍 Análisis del resultado
-
-El modelo identificó los problemas intencionales del archivo:
-
-- Manejo inconsistente de errores.
-- Código duplicado.
-- Variables mal nombradas.
-- Código sin utilizar.
-- Serialización JSON inconsistente.
-- Construcción poco robusta de URLs.
-
-El archivo completo fue enviado al modelo porque sus `9699` caracteres no superaron el límite configurado.
-
-Las secciones, prioridades y recomendaciones de la respuesta confirman que el `System Prompt` definió correctamente el comportamiento del modelo.
+</details>
 
 ---
 
-## 📖 Resumen
+# 🔍 Análisis del resultado
 
-**La clase valida y lee un archivo, controla la cantidad de contenido, construye una solicitud con sus metadatos y la envía a un LLM. El `System Prompt` define la tarea, mientras la aplicación administra el archivo, el streaming, las advertencias y las métricas.**
+El modelo identificó problemas intencionales relacionados con:
+
+- ⚠️ Manejo inconsistente de errores.
+- ♻️ Código duplicado.
+- 🏷️ Variables mal nombradas.
+- 🗑️ Código sin utilizar.
+- 📦 Serialización JSON inconsistente.
+- 🌐 Construcción poco robusta de URLs.
+
+El archivo contenía:
+
+```text
+9699 caracteres
+```
+
+por lo que fue enviado completamente al modelo al no superar el límite configurado.
+
+Las secciones, prioridades y recomendaciones generadas muestran que el `System Prompt` condicionó correctamente el tipo de análisis realizado.
+
+---
+
+# 🎯 Conclusión
+
+El análisis de archivos introduce un concepto fundamental para aplicaciones basadas en LLMs:
+
+> **El modelo puede recibir información externa como parte de su contexto y utilizarla para realizar una tarea específica.**
+
+El flujo actual es:
+
+```text
+📄 Archivo
+    ↓
+✅ Validación
+    ↓
+📖 Lectura
+    ↓
+📏 Control de tamaño
+    ↓
+🧩 Construcción del contexto
+    ↓
+🧠 System Prompt
+    ↓
+🤖 LLM
+    ↓
+💬 Resultado
+```
+
+Este enfoque funciona correctamente para documentos pequeños o medianos.
+
+Cuando aumenta la cantidad o el tamaño de los documentos, enviar todo el contenido deja de ser una estrategia eficiente.
+
+Ese problema conduce directamente a `RAG`, donde los documentos serán:
+
+```text
+📄 Documentos
+      ↓
+✂️ Fragmentados
+      ↓
+🔢 Vectorizados
+      ↓
+🗃️ Indexados
+      ↓
+🔎 Recuperados según relevancia
+      ↓
+🤖 Utilizados por el LLM
+```
+
+Por tanto, la lectura y análisis directo de archivos constituye una base natural para comprender posteriormente **chunking, embeddings, búsqueda vectorial y Retrieval-Augmented Generation**.
+
+---
+
+# 📖 Resumen
+
+**El análisis de archivos valida y lee contenido externo, controla cuánto texto se incorpora al contexto y lo envía a un LLM junto con las instrucciones definidas en el `System Prompt`.**
+
+**La implementación actual utiliza el archivo completo o una versión truncada. RAG evolucionará este mecanismo permitiendo dividir, indexar y recuperar únicamente los fragmentos relevantes antes de construir el contexto del modelo.**
 
 ---
 

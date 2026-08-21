@@ -13,6 +13,10 @@ import { buildContents, toGeminiTools } from "./internal/index.js";
 import { GeminiToolExecutor } from "./gemini-tool-executor.js";
 
 import { ExecutionContext, GeminiToolCall } from "./gemini.types.js";
+import {
+  LlmUsageLimiterService,
+  LlmUsageTrackerService,
+} from "../../../../cost/index.js";
 
 /**
  * Cliente encargado de gestionar la comunicación con Gemini.
@@ -27,6 +31,12 @@ export class GeminiClient implements LlmClient {
   // Modelo utilizado para generar las respuestas.
   private readonly model: string;
 
+  /** Controla y limita la cantidad de llamadas realizadas a los proveedores LLM. */
+  private readonly usageLimiter: LlmUsageLimiterService;
+
+  /** Registra y acumula el consumo real de tokens generado por las llamadas al LLM. */
+  private readonly usageTracker: LlmUsageTrackerService;
+
   /**
    * Crea una nueva instancia del cliente de Gemini.
    *
@@ -34,13 +44,42 @@ export class GeminiClient implements LlmClient {
    * @param params.apiKey Clave de API utilizada para autenticar las solicitudes.
    * @param params.model Modelo de Gemini utilizado para generar respuestas.
    */
-  constructor({ apiKey, model }: { apiKey: string; model: string }) {
+  constructor({
+    apiKey,
+    model,
+    usageLimiter,
+    usageTracker,
+  }: {
+    apiKey: string;
+    model: string;
+    usageLimiter: LlmUsageLimiterService;
+    usageTracker: LlmUsageTrackerService;
+  }) {
     this.client = new GoogleGenAI({
       apiKey,
     });
 
     this.model = model;
+    this.usageLimiter = usageLimiter;
+    this.usageTracker = usageTracker;
     this.toolExecutor = new GeminiToolExecutor();
+  }
+
+  /**
+   * Registra el consumo acumulado de una ejecución.
+   */
+  private recordUsage(
+    requests: number,
+    inputTokens: number,
+    outputTokens: number,
+  ): void {
+    this.usageTracker.record({
+      provider: "gemini",
+      model: this.model,
+      requests,
+      inputTokens,
+      outputTokens,
+    });
   }
 
   /**
@@ -165,6 +204,9 @@ export class GeminiClient implements LlmClient {
     text: string,
     context: ExecutionContext,
   ): AgentResponse {
+    // Registra toda la ejecución, incluidas las iteraciones con tools.
+    this.recordUsage(1, context.totalInputTokens, context.totalOutputTokens);
+
     return {
       text,
       totalInputTokens: context.totalInputTokens,
@@ -202,6 +244,8 @@ export class GeminiClient implements LlmClient {
   }: AgentRequest): Promise<AgentResponse> {
     // Ejecuta una única consulta cuando no existen herramientas.
     if (!tools?.length) {
+      // Una consulta directa consume una request.
+      this.usageLimiter.consume();
       const response = await this.create(
         buildContents({
           prompt,
@@ -213,10 +257,15 @@ export class GeminiClient implements LlmClient {
 
       const text = response.text;
 
+      const inputTokens = response.usageMetadata?.promptTokenCount ?? 0;
+      const outputTokens = response.usageMetadata?.candidatesTokenCount ?? 0;
+
+      this.recordUsage(1, inputTokens, outputTokens);
+
       return {
         text: text || "Gemini no retornó contenido de texto en la respuesta",
-        totalInputTokens: response.usageMetadata?.promptTokenCount ?? 0,
-        totalOutputTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
+        totalInputTokens: inputTokens,
+        totalOutputTokens: outputTokens,
         toolsUsed: [],
         toolCallsLastTurn: 0,
       };
@@ -233,6 +282,11 @@ export class GeminiClient implements LlmClient {
         "Se proporcionaron tools pero no un estado de ejecución.",
       );
     }
+    /**
+     * Consumir una solicitud inmediatamente antes
+     * de realizar la llamada real al proveedor.
+     */
+    this.usageLimiter.consume();
 
     // Inicializa el contexto compartido entre las iteraciones.
     const context = this.createExecutionContext(prompt, messages, toolState);
@@ -341,6 +395,7 @@ export class GeminiClient implements LlmClient {
     maxTokens,
     maxIterations,
     maxTokensTools,
+    onChunk,
   }: AgentRequest): Promise<AgentResponse> {
     // Ejecuta un único stream cuando no existen herramientas.
     if (!tools?.length) {
@@ -348,6 +403,8 @@ export class GeminiClient implements LlmClient {
       let totalInputTokens = 0;
       let totalOutputTokens = 0;
 
+      // Una consulta directa consume una request.
+      this.usageLimiter.consume();
       const stream = await this.createStream(
         buildContents({
           prompt,
@@ -361,7 +418,12 @@ export class GeminiClient implements LlmClient {
       for await (const chunk of stream) {
         const text = chunk.text ?? "";
 
-        fullResponse += text;
+        if (text) {
+          fullResponse += text;
+
+          // Expone el fragmento al consumidor.
+          onChunk?.(text);
+        }
 
         // Actualiza el consumo de tokens disponible en el fragmento.
         totalInputTokens =
@@ -374,6 +436,9 @@ export class GeminiClient implements LlmClient {
       const text =
         fullResponse.trim() ||
         "Gemini no retornó contenido de texto en la respuesta";
+
+      // Registra el consumo correspondiente a la única llamada realizada.
+      this.recordUsage(1, totalInputTokens, totalOutputTokens);
 
       return {
         text,
@@ -395,6 +460,11 @@ export class GeminiClient implements LlmClient {
         "Se proporcionaron tools pero no un estado de ejecución.",
       );
     }
+    /**
+     * Consumir una solicitud inmediatamente antes
+     * de realizar la llamada real al proveedor.
+     */
+    this.usageLimiter.consume();
 
     // Inicializa el contexto compartido entre las iteraciones.
     const context = this.createExecutionContext(prompt, messages, toolState);
@@ -434,6 +504,8 @@ export class GeminiClient implements LlmClient {
 
         if (text) {
           streamedText += text;
+          // Expone el fragmento generado durante la iteración.
+          onChunk?.(text);
         }
 
         // Conserva las partes generadas para continuar la conversación.
@@ -469,7 +541,6 @@ export class GeminiClient implements LlmClient {
       }
 
       context.totalInputTokens += inputTokens;
-
       context.totalOutputTokens += outputTokens;
 
       // Retorna el texto cuando no existen llamadas a herramientas.

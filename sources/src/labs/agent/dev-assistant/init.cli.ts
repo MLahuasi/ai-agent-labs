@@ -1,5 +1,6 @@
 import { config, validateConfig } from "../../../config/index.js";
 import { createLlmProvider } from "../../../llm/llm.factory.js";
+import { GuardrailsService } from "../../../security/guardrails.service.js";
 import { starAgent } from "./init.js";
 
 try {
@@ -22,7 +23,24 @@ try {
   console.log(`   • Numero max de Tokens: ${config.max_tokens}      `);
   console.log("");
   console.log("-".repeat(50));
-  await starAgent(llm);
+
+  const guardrails = new GuardrailsService({
+    maxInputLength: config.guardrails.maxInputLength,
+    rateLimit: {
+      maxRequest: config.llm_usage.maxRequest,
+      windowMs: config.llm_usage.windowMs,
+    },
+  });
+  console.log(
+    `🛡️ Guardrails: máximo ${config.llm_usage.maxRequest} mensajes ` +
+      `del usuario cada ${config.llm_usage.windowMs / 1000} segundos.`,
+  );
+  console.log(
+    "   Al alcanzar el límite deberás esperar a la siguiente ventana.",
+  );
+  console.log("");
+  console.log("-".repeat(50));
+  await starAgent(llm, guardrails);
 } catch (error) {
   const message = error instanceof Error ? error.message : "Error desconocido";
 

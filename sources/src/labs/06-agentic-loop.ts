@@ -1,12 +1,13 @@
-import readline from "node:readline/promises";
-import { stdin as input, stdout as output } from "node:process";
-
+import type { Interface } from "node:readline/promises";
 import { Conversation } from "../chat/index.js";
 import { config } from "../config/index.js";
 import { DOCUMENTATION_ASSISTANT_PROMPT } from "../llm/prompts/system.prompt.js";
 import { TOOL_DEFINITIONS } from "../tools/definitions/index.js";
 import { executeFileTool } from "../tools/executor/files-tools.executor.js";
 import { LlmClient } from "../types/app/client.js";
+import { GuardrailsService } from "../security/guardrails.service.js";
+import { printHistory, printStats } from "../stats/index.js";
+import { printLlmUsage } from "../cost/index.js";
 
 /**
  * Inicia un chat interactivo con acceso a herramientas de archivos.
@@ -14,12 +15,11 @@ import { LlmClient } from "../types/app/client.js";
  * @param llm Cliente LLM utilizado durante la conversación.
  * @return No retorna ningún valor.
  */
-export async function startAgenticLoop(llm: LlmClient): Promise<void> {
-  const rl = readline.createInterface({
-    input,
-    output,
-  });
-
+export async function startAgenticLoop(
+  rl: Interface,
+  llm: LlmClient,
+  guardrails: GuardrailsService,
+): Promise<void> {
   const conversation = new Conversation(DOCUMENTATION_ASSISTANT_PROMPT, {
     maxTokens: config.max_tokens,
     maxTokensTools: config.max_tokens_tools,
@@ -38,7 +38,7 @@ export async function startAgenticLoop(llm: LlmClient): Promise<void> {
     `   Tengo acceso a ${TOOL_DEFINITIONS.length} tools: ` +
       `${TOOL_DEFINITIONS.map((tool) => tool.name).join(", ")}`,
   );
-  console.log("   Comandos: /clear, /stats, /tools, /exit");
+  console.log("   Comandos: /clear, /stats, /tools, /usage, /history, /exit");
   console.log("");
 
   try {
@@ -80,6 +80,11 @@ export async function startAgenticLoop(llm: LlmClient): Promise<void> {
         continue;
       }
 
+      if (userInput === "/usage") {
+        printLlmUsage();
+        continue;
+      }
+
       if (userInput === "/exit" || userInput === "/salida") {
         const stats = conversation.getStats();
 
@@ -92,11 +97,18 @@ export async function startAgenticLoop(llm: LlmClient): Promise<void> {
         break;
       }
 
+      const guardrailResult = guardrails.checkInput(userInput);
+
+      if (!guardrailResult.safe) {
+        guardrails.printResult("", userInput, guardrailResult);
+        continue;
+      }
+
       try {
         process.stdout.write("\nAsistente: ");
 
         const { text } = await conversation.sendChat(
-          userInput,
+          guardrailResult.sanitized,
           TOOL_DEFINITIONS,
           executeFileTool,
         );
@@ -111,60 +123,5 @@ export async function startAgenticLoop(llm: LlmClient): Promise<void> {
       }
     }
   } finally {
-    rl.close();
   }
-}
-
-/**
- * Imprime las estadísticas actuales de una conversación.
- *
- * @param conversation Conversación utilizada para obtener las estadísticas.
- * @return No retorna ningún valor.
- */
-function printStats(conversation: Conversation): void {
-  const stats = conversation.getStats();
-
-  console.log("\n📊 Estadísticas de la conversación:");
-  console.log(`   • Turnos: ${stats.turns}`);
-  console.log(`   • Tokens de entrada acumulados: ${stats.inputTokens}`);
-  console.log(`   • Tokens de salida acumulados: ${stats.outputTokens}`);
-  console.log(
-    `   • Tokens estimados en contexto actual: ` +
-      `${conversation.estimateCurrentTokens()}`,
-  );
-  console.log(
-    `   • Llamadas a tools en el último turno: ` +
-      `${stats.toolCallsLastTurn}\n`,
-  );
-}
-
-/**
- * Imprime el historial completo de la conversación.
- *
- * @param conversation Conversación utilizada para obtener el historial.
- * @return No retorna ningún valor.
- */
-function printHistory(conversation: Conversation): void {
-  const history = conversation.getHistory();
-
-  console.log("\n📜 Historial de la conversación:");
-
-  if (history.length === 0) {
-    console.log("   No hay mensajes registrados.\n");
-    return;
-  }
-
-  for (const message of history) {
-    const role =
-      message.role === "user"
-        ? "Tú"
-        : message.role === "assistant"
-          ? "Asistente"
-          : message.role;
-
-    console.log(`\n${role}:`);
-    console.log(message.content);
-  }
-
-  console.log("");
 }

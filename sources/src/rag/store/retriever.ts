@@ -1,5 +1,5 @@
 import { config } from "../../config/index.js";
-import { OpenAiEmbeddingClient } from "../../llm/clients/embedding/index.js";
+import { createOpenAiEmbeddingClient } from "../../llm/llm.instances.js";
 import type { RetrievedChunk } from "../../types/rag/index.js";
 import { VectorStore } from "./index.js";
 
@@ -69,7 +69,7 @@ export async function retrieveContext(
    * Crea el cliente encargado de generar embeddings
    * mediante el proveedor configurado.
    */
-  const client = new OpenAiEmbeddingClient();
+  const client = createOpenAiEmbeddingClient();
 
   /**
    * Convierte la consulta del usuario en un vector numérico.

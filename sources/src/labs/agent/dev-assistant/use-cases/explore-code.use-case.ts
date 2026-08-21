@@ -1,4 +1,6 @@
 import { Conversation } from "../../../../chat/index.js";
+import { hasAvailableLlmRequests } from "../../../../cost/index.js";
+import { GuardrailsService } from "../../../../security/guardrails.service.js";
 import { executeTool, TOOL_DEFINITIONS } from "../tools/index.js";
 import { printScenarioDetails, printStats } from "../utils/index.js";
 
@@ -13,7 +15,13 @@ import { printScenarioDetails, printStats } from "../utils/index.js";
  */
 export async function exploreCodeUseCase(
   conversation: Conversation,
+  guardrails: GuardrailsService,
 ): Promise<void> {
+  // Verificar que exista capacidad suficiente antes
+  // de iniciar la ejecución del laboratorio.
+  if (!hasAvailableLlmRequests(4)) {
+    return;
+  }
   // Muestra en consola la información descriptiva del escenario que se ejecutará.
   printScenarioDetails(
     1,
@@ -26,29 +34,36 @@ export async function exploreCodeUseCase(
   const question =
     "¿Qué funciones y valores exporta el archivo src/rag/store/retriever.ts?";
 
-  console.log(`Usuario: ${question}\n`);
-  console.log("Robotitus: ");
+  // Validar el prompt antes de enviarlo al LLM.
+  const guardrailResult = guardrails.checkInput(question);
 
-  // Envía la consulta al agente y habilita el uso de las herramientas disponibles.
-  // `executeTool` será invocado cuando el modelo decida ejecutar alguna herramienta.
-  const { text } = await conversation.sendChat(
-    question,
-    TOOL_DEFINITIONS,
-    executeTool,
-  );
+  if (!guardrailResult.safe) {
+    guardrails.printResult("", question, guardrailResult);
+  } else {
+    console.log(`Usuario: ${guardrailResult.sanitized}\n`);
+    console.log("Robotitus: ");
 
-  // Imprime la respuesta generada por el agente.
-  process.stdout.write(text);
-  process.stdout.write("\n\n");
+    // Envía la consulta al agente y habilita el uso de las herramientas disponibles.
+    // `executeTool` será invocado cuando el modelo decida ejecutar alguna herramienta.
+    const { text } = await conversation.sendChat(
+      guardrailResult.sanitized,
+      TOOL_DEFINITIONS,
+      executeTool,
+    );
 
-  // Muestra únicamente las herramientas utilizadas durante el último turno.
-  const toolsUsed = conversation.getToolsUsedLastTurn();
+    // Imprime la respuesta generada por el agente.
+    process.stdout.write(text);
+    process.stdout.write("\n\n");
 
-  if (toolsUsed.length > 0) {
-    console.log(`\n🔧 Tools usadas: ${toolsUsed.join(", ")}`);
+    // Muestra únicamente las herramientas utilizadas durante el último turno.
+    const toolsUsed = conversation.getToolsUsedLastTurn();
+
+    if (toolsUsed.length > 0) {
+      console.log(`\n🔧 Tools usadas: ${toolsUsed.join(", ")}`);
+    }
+
+    // Imprime métricas de la conversación, como uso de tokens o información
+    // relacionada con la ejecución del escenario.
+    printStats(conversation);
   }
-
-  // Imprime métricas de la conversación, como uso de tokens o información
-  // relacionada con la ejecución del escenario.
-  printStats(conversation);
 }
