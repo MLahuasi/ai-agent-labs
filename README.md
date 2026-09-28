@@ -10,7 +10,7 @@ Guía para crear el entorno local, instalar dependencias y ejecutar el proyecto 
 
 ## [Fundamentos](./info/fundamentos/README.md)
 
-## OpenAI Agent SDK
+<!-- ## OpenAI Agent SDK
 
 - [Comprende los conceptos del SDK de Agentes de OpenAI](./info/openai-agent-sdk/README.md)
 - [Herramientas vs Agentes Guardrails](./info/openai-agent-sdk/README.md)
@@ -56,4 +56,4 @@ Guía para crear el entorno local, instalar dependencias y ejecutar el proyecto 
 - [Construcción de un servidor y cliente MCP](./info/mcp/README.md)
 - [Múltiples servidores MCP locales y remotos](./info/mcp/README.md)
 - [Proyecto 8: Traders de Acciones de IA](./info/mcp/README.md)
-- [Proyecto 8: Traders de acciones en IA](./info/mcp/README.md)
+- [Proyecto 8: Traders de acciones en IA](./info/mcp/README.md) -->
