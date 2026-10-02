@@ -296,7 +296,7 @@ Cada capa reduce un tipo diferente de riesgo y evita depender de un único mecan
 
 ---
 
-# [🧪 Laboratorio](../../../sources/src/labs/guardrails/guardrail.menu.ts)
+# [🧪 Laboratorio](../../../ai-developer/src/labs/guardrails/guardrail.menu.ts)
 
 ```txt
 ╔═════════════════════════════════════╗
@@ -501,4 +501,4 @@ En aplicaciones de producción, la seguridad debería diseñarse como una combin
 
 **validación de inputs + detección de ataques + control de tráfico + autorización de herramientas + validación de outputs + observabilidad**.
 
-[REGRESAR](../README.md)
+[REGRESAR](../../README.md)

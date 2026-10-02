@@ -478,7 +478,7 @@ La selección dinámica puede utilizarse en diferentes escenarios.
 
 ---
 
-# [🧪 Laboratorio](../../../../sources/src/labs/orchestrate-llms/use-cases/select-model.use-case.ts)
+# [🧪 Laboratorio](../../../../ai-developer/src/labs/orchestrate-llms/use-cases/select-model.use-case.ts)
 
 El laboratorio implementa una selección dinámica utilizando tres categorías:
 

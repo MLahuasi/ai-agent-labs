@@ -513,7 +513,7 @@ El resultado mantiene separados:
 
 ---
 
-# [🧪 Laboratorio](../../sources/src/labs/04-read-file-streamin-response.ts)
+# [🧪 Laboratorio](../../ai-developer/src/labs/04-read-file-streamin-response.ts)
 
 El laboratorio analiza un archivo C# preparado con problemas intencionales:
 
@@ -599,7 +599,7 @@ Un buen punto de partida para aprender, ¡ahora a refactorizar para mejorar la c
 ---
 
 Archivo revisado: rest-api.service.cs
-Ruta: C:\Fuentes\IA-Agents\ai-agent-labs\sources\src\labs\assets\rest-api.service.cs
+Ruta: C:\Fuentes\IA-Agents\ai-agent-labs\ai-developer\src\labs\assets\rest-api.service.cs
 Líneas: 354
 Caracteres: 9699
 Caracteres revisados: 9699
@@ -694,4 +694,4 @@ Por tanto, la lectura y análisis directo de archivos constituye una base natura
 
 ---
 
-[REGRESAR](./README.md)
+[REGRESAR](../README.md)

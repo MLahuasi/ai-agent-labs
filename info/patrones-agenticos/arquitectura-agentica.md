@@ -249,4 +249,4 @@ No existe un camino fijo de ejecución.
 
 ---
 
-[REGRESAR](./README.md)
+[REGRESAR](../README.md)

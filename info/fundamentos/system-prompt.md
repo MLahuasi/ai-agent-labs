@@ -138,7 +138,7 @@ Esto permite conseguir respuestas más alineadas con los requisitos de la aplica
 
 ---
 
-# [🧪 Laboratorio](../../sources/src/labs/02-system-prompt.ts)
+# [🧪 Laboratorio](../../ai-developer/src/labs/02-system-prompt.ts)
 
 Se utiliza el mismo código en las dos ejecuciones.
 
@@ -566,4 +566,4 @@ El `System Prompt` se ocupa principalmente de **definir instrucciones y comporta
 
 ---
 
-[REGRESAR](./README.md)
+[REGRESAR](../README.md)

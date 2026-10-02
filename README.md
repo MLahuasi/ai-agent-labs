@@ -32,7 +32,11 @@ Conceptos y laboratorios prácticos relacionados con:
 
 ---
 
-## 🛠️ AI-Assisted Software Engineering
+# 🕸️ [Patrones Agénticos](./info/patrones-agenticos/README.md)
+
+---
+
+# 🛠️ [AI-Assisted Software Engineering](https://github.com/MLahuasi/opencode-info)
 
 Como complemento al desarrollo de agentes de IA, también se explora el uso de agentes de programación dentro del ciclo de desarrollo de software.
 

@@ -302,7 +302,7 @@ La evaluación automática puede utilizarse en diferentes escenarios.
 
 ---
 
-# [🧪 Laboratorio](../../../../sources/src/labs/orchestrate-llms/use-cases/evaluator.use-case.ts)
+# [🧪 Laboratorio](../../../../ai-developer/src/labs/orchestrate-llms/use-cases/evaluator.use-case.ts)
 
 El laboratorio implementa un **LLM Evaluator Pattern** mediante un agente que representa a **Bilbo Bolsón**.
 

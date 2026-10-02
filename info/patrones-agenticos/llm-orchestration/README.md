@@ -428,14 +428,14 @@ Las estrategias de orquestación pueden combinarse para resolver diferentes tipo
 
 Para mantener separada la explicación general de la orquestación de sus casos de uso, cada aplicación se documenta de forma independiente. En estos documentos pueden incorporarse su arquitectura, implementación, laboratorio, resultados y consideraciones específicas.
 
-| Aplicación | Objetivo |
-| ---------- | -------- |
-| 🤖 [Selección dinámica de modelos](./applications/model-selection.md) | Seleccionar automáticamente el modelo más apropiado según la solicitud. |
-| 💻 [Procesamiento especializado](./applications/specialized-processing.md) | Asignar tareas o responsabilidades específicas a diferentes modelos. |
-| 🧪 [Comparación de modelos](./applications/model-comparison.md) | Ejecutar la misma entrada en varios LLMs y comparar sus resultados. |
-| ⚖️ [Evaluación automática](./applications/evaluator.md) | Utilizar un LLM para validar la respuesta generada por otro y solicitar una corrección cuando sea necesario. |
-| 🔁 [Recuperación ante fallos](./applications/fallback.md) | Utilizar un modelo alternativo cuando el modelo principal falla o no está disponible. |
-| 💰 [Optimización de costos](./applications/cost-optimization.md) | Seleccionar modelos considerando costo, capacidad y complejidad de la tarea. |
+| Aplicación                                                                 | Objetivo                                                                                                     |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| 🤖 [Selección dinámica de modelos](./applications/model-selection.md)      | Seleccionar automáticamente el modelo más apropiado según la solicitud.                                      |
+| 💻 [Procesamiento especializado](./applications/specialized-processing.md) | Asignar tareas o responsabilidades específicas a diferentes modelos.                                         |
+| 🧪 [Comparación de modelos](./applications/model-comparison.md)            | Ejecutar la misma entrada en varios LLMs y comparar sus resultados.                                          |
+| ⚖️ [Evaluación automática](./applications/evaluator.md)                    | Utilizar un LLM para validar la respuesta generada por otro y solicitar una corrección cuando sea necesario. |
+| 🔁 [Recuperación ante fallos](./applications/fallback.md)                  | Utilizar un modelo alternativo cuando el modelo principal falla o no está disponible.                        |
+| 💰 [Optimización de costos](./applications/cost-optimization.md)           | Seleccionar modelos considerando costo, capacidad y complejidad de la tarea.                                 |
 
 ➡️ [Ver todas las aplicaciones](./applications/README.md)
 
@@ -579,4 +579,4 @@ Una abstracción común como `LlmClient` mantiene desacoplada la lógica de orqu
 
 ---
 
-[REGRESAR](./README.md)
+[REGRESAR](../../README.md)

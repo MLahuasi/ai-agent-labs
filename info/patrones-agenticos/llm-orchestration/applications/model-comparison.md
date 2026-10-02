@@ -248,7 +248,7 @@ Para comparaciones más rigurosas pueden utilizarse múltiples preguntas, difere
 
 ---
 
-# [🧪 Laboratorio](../../../../sources/src/labs/orchestrate-llms/use-cases/compare.use-case.ts)
+# [🧪 Laboratorio](../../../../ai-developer/src/labs/orchestrate-llms/use-cases/compare.use-case.ts)
 
 El laboratorio ejecuta la misma pregunta utilizando cinco modelos de diferentes proveedores.
 
