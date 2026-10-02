@@ -708,4 +708,4 @@ Resumen: 5 turnos, 11838 tokens de entrada, 1472 tokens de salida.
 
 ---
 
-[REGRESAR](../../README.md)
+[REGRESAR](../../../README.md)

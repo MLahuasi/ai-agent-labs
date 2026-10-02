@@ -694,4 +694,4 @@ Por tanto, la lectura y análisis directo de archivos constituye una base natura
 
 ---
 
-[REGRESAR](../README.md)
+[REGRESAR](./README.md)

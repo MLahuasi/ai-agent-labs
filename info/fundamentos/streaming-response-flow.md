@@ -322,4 +322,4 @@ async function obtenerUsuario() {
 
 ---
 
-[REGRESAR](../README.md)
+[REGRESAR](./README.md)

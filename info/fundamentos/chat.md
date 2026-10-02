@@ -705,4 +705,4 @@ En cada turno:
 
 ---
 
-[REGRESAR](../README.md)
+[REGRESAR](./README.md)

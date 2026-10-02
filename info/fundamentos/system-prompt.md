@@ -566,4 +566,4 @@ El `System Prompt` se ocupa principalmente de **definir instrucciones y comporta
 
 ---
 
-[REGRESAR](../README.md)
+[REGRESAR](./README.md)
