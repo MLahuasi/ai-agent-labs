@@ -11,3 +11,5 @@ Cómo integrar, comparar y seleccionar distintos modelos de lenguaje dentro de u
 Se estudian conceptos como proveedores, modelos, abstracciones comunes, selección dinámica y criterios para elegir el LLM más adecuado según el caso de uso.
 
 ---
+
+[REGRESAR](../../README.md)

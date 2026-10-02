@@ -37,3 +37,7 @@ Se introducen conceptos como `tool calling`, definición de herramientas, valida
 Cómo proteger aplicaciones que integran `LLMs` mediante capas de seguridad que validan y controlan las interacciones con el modelo.
 
 Se introducen mecanismos como sanitización, detección de `Prompt Injection`, `Rate Limiting`, autorización de herramientas y validación de resultados.
+
+---
+
+[REGRESAR](../../README.md)
