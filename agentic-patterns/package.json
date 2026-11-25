@@ -1,0 +1,31 @@
+{
+  "name": "agentic-patterns",
+  "version": "1.0.0",
+  "description": "Un proyecto aprender sobre patrones de diseño para agentes",
+  "main": "dist/main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "start": "node --env-file=.env dist/main.js",
+    "dev": "tsx --env-file=.env src/main.ts",
+    "watch": "tsx watch --env-file=.env src/main.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.75",
+    "@ai-sdk/google": "^4.0.90",
+    "@ai-sdk/groq": "^4.0.57",
+    "@ai-sdk/openai": "^4.0.87",
+    "ai": "^7.0.131",
+    "ollama-ai-provider-v2": "^4.0.1",
+    "zod": "^4.6.5"
+  }
+}
